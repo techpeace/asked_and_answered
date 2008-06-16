@@ -1,0 +1,7 @@
+.DS_Store
+tmp/*
+log/*
+config/database.yml
+config/environments/production.rb
+db/schema.rb
+db/schema.sql
