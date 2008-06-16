@@ -1,0 +1,13 @@
+- content_for :body do
+
+  %h1 Ask our Mars experts a question!
+  %p Our team of planetary scientists and astronomers are here to answer children's questions about the Red Planet.
+  %p To ask a question, fill in the form below:
+  
+  #question_form=render :partial => "new"
+  
+  = transparent_flash_message
+  
+- content_for :sidebar do
+
+  #questions= render :partial => 'shared/questions'

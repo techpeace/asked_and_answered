@@ -37,7 +37,7 @@ Rails::Initializer.run do |config|
   # Make sure the secret is at least 30 characters and all random, 
   # no regular words or you'll be exposed to dictionary attacks.
   config.action_controller.session = {
-    :session_key => '_mars_session',
+    :session_key => '_asked_and_answered_session',
     :secret      => '914a276d4eb96afad4dea29f332c195ba7b470dab3c7e98866585a0db287029192b0f2a308fbabcacf96aac1877020c5064de41833b890460ffbf2e070d00645'
   }
 
@@ -56,4 +56,12 @@ Rails::Initializer.run do |config|
 
   # Make Active Record use UTC-base instead of local time
   # config.active_record.default_timezone = :utc
+  
+  # Include gem dependencies.
+  config.gem "haml"
 end
+
+# Load the debugger if we're in development.
+require 'ruby-debug' if $RAILS_ENV != 'production'
+# Load the AskedAndAnswered application-specific configuration
+APP_CONFIG = YAML::load(ERB.new((IO.read("#{RAILS_ROOT}/config/application.yml"))).result).symbolize_keys

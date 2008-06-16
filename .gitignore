@@ -3,5 +3,6 @@ tmp/*
 log/*
 config/database.yml
 config/environments/production.rb
+config/application.yml
 db/schema.rb
 db/schema.sql
