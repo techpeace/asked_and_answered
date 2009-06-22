@@ -1,16 +1,12 @@
 require 'rbconfig'
-require 'digest/md5' 
-require 'rails_generator/secret_key_generator'
 
 class AppGenerator < Rails::Generator::Base
   DEFAULT_SHEBANG = File.join(Config::CONFIG['bindir'],
                               Config::CONFIG['ruby_install_name'])
 
   DATABASES = %w(mysql oracle postgresql sqlite2 sqlite3 frontbase)
-  DEFAULT_DATABASE = 'sqlite3'
 
-  default_options   :db => (ENV["RAILS_DEFAULT_DATABASE"] || DEFAULT_DATABASE),
-    :shebang => DEFAULT_SHEBANG, :freeze => false
+  default_options   :db => "mysql", :shebang => DEFAULT_SHEBANG, :freeze => false
   mandatory_options :source => "#{File.dirname(__FILE__)}/../../../../.."
 
   def initialize(runtime_args, runtime_options = {})
@@ -26,18 +22,6 @@ class AppGenerator < Rails::Generator::Base
     script_options     = { :chmod => 0755, :shebang => options[:shebang] == DEFAULT_SHEBANG ? nil : options[:shebang] }
     dispatcher_options = { :chmod => 0755, :shebang => options[:shebang] }
 
-    # duplicate CGI::Session#generate_unique_id
-    md5 = Digest::MD5.new
-    now = Time.now
-    md5 << now.to_s
-    md5 << String(now.usec)
-    md5 << String(rand(0))
-    md5 << String($$)
-    md5 << @app_name
-
-    # Do our best to generate a secure secret key for CookieStore
-    secret = Rails::SecretKeyGenerator.new(@app_name).generate_secret
-
     record do |m|
       # Root directory and all subdirectories.
       m.directory ''
@@ -48,31 +32,27 @@ class AppGenerator < Rails::Generator::Base
       m.file "README",         "README"
 
       # Application
-      m.template "helpers/application.rb",        "app/controllers/application.rb", :assigns => { :app_name => @app_name, :app_secret => md5.hexdigest }
+      m.template "helpers/application.rb",        "app/controllers/application.rb", :assigns => { :app_name => @app_name }
       m.template "helpers/application_helper.rb", "app/helpers/application_helper.rb"
       m.template "helpers/test_helper.rb",        "test/test_helper.rb"
 
-      # database.yml and routes.rb
+      # database.yml and .htaccess
       m.template "configs/databases/#{options[:db]}.yml", "config/database.yml", :assigns => {
         :app_name => @app_name,
         :socket   => options[:db] == "mysql" ? mysql_socket_location : nil
       }
-      m.template "configs/routes.rb", "config/routes.rb"
-
-      # Initializers
-      m.template "configs/initializers/inflections.rb", "config/initializers/inflections.rb"
-      m.template "configs/initializers/mime_types.rb", "config/initializers/mime_types.rb"
-      m.template "configs/initializers/new_rails_defaults.rb", "config/initializers/new_rails_defaults.rb"
+      m.template "configs/routes.rb",     "config/routes.rb"
+      m.template "configs/apache.conf",   "public/.htaccess"
 
       # Environments
       m.file "environments/boot.rb",    "config/boot.rb"
-      m.template "environments/environment.rb", "config/environment.rb", :assigns => { :freeze => options[:freeze], :app_name => @app_name, :app_secret => secret }
+      m.template "environments/environment.rb", "config/environment.rb", :assigns => { :freeze => options[:freeze] }
       m.file "environments/production.rb",  "config/environments/production.rb"
       m.file "environments/development.rb", "config/environments/development.rb"
       m.file "environments/test.rb",        "config/environments/test.rb"
 
       # Scripts
-      %w( about console destroy generate performance/benchmarker performance/profiler performance/request process/reaper process/spawner process/inspector runner server plugin ).each do |file|
+      %w( about breakpointer console destroy generate performance/benchmarker performance/profiler process/reaper process/spawner process/inspector runner server plugin ).each do |file|
         m.file "bin/#{file}", "script/#{file}", script_options
       end
 
@@ -82,7 +62,7 @@ class AppGenerator < Rails::Generator::Base
       m.file "dispatches/dispatch.fcgi", "public/dispatch.fcgi", dispatcher_options
 
       # HTML files
-      %w(404 422 500 index).each do |file|
+      %w(404 500 index).each do |file|
         m.template "html/#{file}.html", "public/#{file}.html"
       end
 
@@ -120,8 +100,8 @@ class AppGenerator < Rails::Generator::Base
              "Default: #{DEFAULT_SHEBANG}") { |v| options[:shebang] = v }
 
       opt.on("-d", "--database=name", String,
-            "Preconfigure for selected database (options: #{DATABASES.join('/')}).",
-            "Default: #{DEFAULT_DATABASE}") { |v| options[:db] = v }
+            "Preconfigure for selected database (options: mysql/oracle/postgresql/sqlite2/sqlite3).",
+            "Default: mysql") { |v| options[:db] = v }
 
       opt.on("-f", "--freeze",
             "Freeze Rails in vendor/rails from the gems generating the skeleton",
@@ -129,7 +109,7 @@ class AppGenerator < Rails::Generator::Base
     end
 
     def mysql_socket_location
-      MYSQL_SOCKET_LOCATIONS.find { |f| File.exist?(f) } unless RUBY_PLATFORM =~ /(:?mswin|mingw)/
+      MYSQL_SOCKET_LOCATIONS.find { |f| File.exists?(f) } unless RUBY_PLATFORM =~ /(:?mswin|mingw)/
     end
 
 
@@ -141,7 +121,7 @@ class AppGenerator < Rails::Generator::Base
     app/models
     app/views/layouts
     config/environments
-    config/initializers
+    components
     db
     doc
     lib
@@ -155,6 +135,8 @@ class AppGenerator < Rails::Generator::Base
     test/fixtures
     test/functional
     test/integration
+    test/mocks/development
+    test/mocks/test
     test/unit
     vendor
     vendor/plugins

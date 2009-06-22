@@ -2,106 +2,25 @@ require 'set'
 
 module ActionView
   module Helpers
-    # Prototype[http://www.prototypejs.org/] is a JavaScript library that provides
-    # DOM[http://en.wikipedia.org/wiki/Document_Object_Model] manipulation, 
-    # Ajax[http://www.adaptivepath.com/publications/essays/archives/000385.php]
-    # functionality, and more traditional object-oriented facilities for JavaScript.  
-    # This module provides a set of helpers to make it more convenient to call
-    # functions from Prototype using Rails, including functionality to call remote 
-    # Rails methods (that is, making a background request to a Rails action) using Ajax. 
+    # Provides a set of helpers for calling Prototype JavaScript functions, 
+    # including functionality to call remote methods using 
+    # Ajax[http://www.adaptivepath.com/publications/essays/archives/000385.php]. 
     # This means that you can call actions in your controllers without 
     # reloading the page, but still update certain parts of it using 
-    # injections into the DOM. A common use case is having a form that adds
-    # a new element to a list without reloading the page or updating a shopping
-    # cart total when a new item is added.
+    # injections into the DOM. The common use case is having a form that adds
+    # a new element to a list without reloading the page.
     #
-    # == Usage
-    # To be able to use these helpers, you must first include the Prototype 
-    # JavaScript framework in your pages. 
+    # To be able to use these helpers, you must include the Prototype 
+    # JavaScript framework in your pages. See the documentation for 
+    # ActionView::Helpers::JavaScriptHelper for more information on including 
+    # the necessary JavaScript.
     #
-    #  javascript_include_tag 'prototype'
-    #
-    # (See the documentation for 
-    # ActionView::Helpers::JavaScriptHelper for more information on including
-    # this and other JavaScript files in your Rails templates.)
-    #
-    # Now you're ready to call a remote action either through a link...
-    #
-    #  link_to_remote "Add to cart",
-    #    :url => { :action => "add", :id => product.id },
-    #    :update => { :success => "cart", :failure => "error" }  
-    #
-    # ...through a form...
-    #
-    #  <% form_remote_tag :url => '/shipping' do -%>
-    #    <div><%= submit_tag 'Recalculate Shipping' %></div>
-    #  <% end -%>
-    #
-    # ...periodically...
-    #
-    #  periodically_call_remote(:url => 'update', :frequency => '5', :update => 'ticker')
-    #
-    # ...or through an observer (i.e., a form or field that is observed and calls a remote
-    # action when changed).
-    #
-    #  <%= observe_field(:searchbox,
-    #       :url => { :action => :live_search }),
-    #       :frequency => 0.5,
-    #       :update => :hits,
-    #       :with => 'query'
-    #       %>
-    # 
-    # As you can see, there are numerous ways to use Prototype's Ajax functions (and actually more than 
-    # are listed here); check out the documentation for each method to find out more about its usage and options.
-    #
-    # === Common Options
     # See link_to_remote for documentation of options common to all Ajax
-    # helpers; any of the options specified by link_to_remote can be used
-    # by the other helpers.
+    # helpers.
     #
-    # == Designing your Rails actions for Ajax
-    # When building your action handlers (that is, the Rails actions that receive your background requests), it's
-    # important to remember a few things.  First, whatever your action would normall return to the browser, it will
-    # return to the Ajax call.  As such, you typically don't want to render with a layout.  This call will cause
-    # the layout to be transmitted back to your page, and, if you have a full HTML/CSS, will likely mess a lot of things up. 
-    # You can turn the layout off on particular actions by doing the following:
+    # See also ActionView::Helpers::ScriptaculousHelper for helpers which work
+    # with the Scriptaculous controls and visual effects library.
     #
-    #  class SiteController < ActionController::Base
-    #    layout "standard", :except => [:ajax_method, :more_ajax, :another_ajax]
-    #  end
-    #
-    # Optionally, you could do this in the method you wish to lack a layout:
-    #
-    #  render :layout => false
-    #
-    # You can tell the type of request from within your action using the <tt>request.xhr?</tt> (XmlHttpRequest, the 
-    # method that Ajax uses to make background requests) method.  
-    #  def name
-    #    # Is this an XmlHttpRequest request?
-    #    if (request.xhr?)
-    #      render :text => @name.to_s
-    #    else
-    #      # No?  Then render an action.
-    #      render :action => 'view_attribute', :attr => @name
-    #    end
-    #  end
-    #
-    # The else clause can be left off and the current action will render with full layout and template. An extension
-    # to this solution was posted to Ryan Heneise's blog at ArtOfMission["http://www.artofmission.com/"].
-    #
-    #  layout proc{ |c| c.request.xhr? ? false : "application" }
-    #
-    # Dropping this in your ApplicationController turns the layout off for every request that is an "xhr" request.
-    #
-    # If you are just returning a little data or don't want to build a template for your output, you may opt to simply 
-    # render text output, like this:
-    #
-    #  render :text => 'Return this from my method!'
-    #
-    # Since whatever the method returns is injected into the DOM, this will simply inject some text (or HTML, if you
-    # tell it to).  This is usually how small updates, such updating a cart total or a file count, are handled.
-    #
-    # == Updating multiple elements
     # See JavaScriptGenerator for information on updating multiple elements
     # on the page in an Ajax response. 
     module PrototypeHelper
@@ -122,30 +41,16 @@ module ActionView
       # render :partial. 
       #
       # Examples:
-      #   # Generates: <a href="#" onclick="new Ajax.Updater('posts', '/blog/destroy/3', {asynchronous:true, evalScripts:true}); 
-      #   #            return false;">Delete this post</a>
       #   link_to_remote "Delete this post", :update => "posts", 
       #     :url => { :action => "destroy", :id => post.id }
-      #
-      #   # Generates: <a href="#" onclick="new Ajax.Updater('emails', '/mail/list_emails', {asynchronous:true, evalScripts:true}); 
-      #   #            return false;"><img alt="Refresh" src="/images/refresh.png?" /></a>
       #   link_to_remote(image_tag("refresh"), :update => "emails", 
       #     :url => { :action => "list_emails" })
-      # 
-      # You can override the generated HTML options by specifying a hash in
-      # <tt>options[:html]</tt>.
-      #  
-      #   link_to_remote "Delete this post", :update => "posts",
-      #     :url  => post_url(@post), :method => :delete, 
-      #     :html => { :class  => "destructive" } 
       #
       # You can also specify a hash for <tt>options[:update]</tt> to allow for
       # easy redirection of output to an other DOM element if a server-side 
       # error occurs:
       #
       # Example:
-      #   # Generates: <a href="#" onclick="new Ajax.Updater({success:'posts',failure:'error'}, '/blog/destroy/5', 
-      #   #            {asynchronous:true, evalScripts:true}); return false;">Delete this post</a>
       #   link_to_remote "Delete this post",
       #     :url => { :action => "destroy", :id => post.id },
       #     :update => { :success => "posts", :failure => "error" }
@@ -158,8 +63,6 @@ module ActionView
       # can simulate PUT or DELETE over POST. All specified with <tt>options[:method]</tt>
       #
       # Example:
-      #   # Generates: <a href="#" onclick="new Ajax.Request('/person/4', {asynchronous:true, evalScripts:true, method:'delete'}); 
-      #   #            return false;">Destroy</a>
       #   link_to_remote "Destroy", :url => person_url(:id => person), :method => :delete
       #
       # By default, these remote requests are processed asynchronous during 
@@ -171,9 +74,6 @@ module ActionView
       # find out the HTTP status, use <tt>request.status</tt>.
       #
       # Example:
-      #   # Generates: <a href="#" onclick="new Ajax.Request('/words/undo?n=33', {asynchronous:true, evalScripts:true, 
-      #   #            onComplete:function(request){undoRequestCompleted(request)}}); return false;">hello</a>
-      #   word = 'hello'
       #   link_to_remote word,
       #     :url => { :action => "undo", :n => word_counter },
       #     :complete => "undoRequestCompleted(request)"
@@ -200,9 +100,6 @@ module ActionView
       # adding additional callbacks for specific status codes.
       #
       # Example:
-      #   # Generates: <a href="#" onclick="new Ajax.Request('/testing/action', {asynchronous:true, evalScripts:true, 
-      #   #            on404:function(request){alert('Not found...? Wrong URL...?')}, 
-      #   #            onFailure:function(request){alert('HTTP Error ' + request.status + '!')}}); return false;">hello</a>
       #   link_to_remote word,
       #     :url => { :action => "action" },
       #     404 => "alert('Not found...? Wrong URL...?')",
@@ -232,27 +129,8 @@ module ActionView
       #                          default this is the current form, but
       #                          it could just as well be the ID of a
       #                          table row or any other DOM element.
-      # <tt>:with</tt>::         A JavaScript expression specifying
-      #                          the parameters for the XMLHttpRequest.
-      #                          Any expressions should return a valid
-      #                          URL query string.
-      #
-      #                          Example:
-      #                          
-      #                            :with => "'name=' + $('name').value"
-      #
-      # You can generate a link that uses AJAX in the general case, while 
-      # degrading gracefully to plain link behavior in the absence of
-      # JavaScript by setting <tt>html_options[:href]</tt> to an alternate URL.
-      # Note the extra curly braces around the <tt>options</tt> hash separate
-      # it as the second parameter from <tt>html_options</tt>, the third.
-      #
-      # Example:
-      #   link_to_remote "Delete this post",
-      #     { :update => "posts", :url => { :action => "destroy", :id => post.id } },
-      #     :href => url_for(:action => "destroy", :id => post.id)
-      def link_to_remote(name, options = {}, html_options = nil)  
-        link_to_function(name, remote_function(options), html_options || options.delete(:html))
+      def link_to_remote(name, options = {}, html_options = {})  
+        link_to_function(name, remote_function(options), html_options)
       end
 
       # Periodically calls the specified url (<tt>options[:url]</tt>) every 
@@ -260,26 +138,6 @@ module ActionView
       # update a specified div (<tt>options[:update]</tt>) with the results 
       # of the remote call. The options for specifying the target with :url 
       # and defining callbacks is the same as link_to_remote.
-      # Examples:
-      #  # Call get_averages and put its results in 'avg' every 10 seconds
-      #  # Generates: 
-      #  #      new PeriodicalExecuter(function() {new Ajax.Updater('avg', '/grades/get_averages', 
-      #  #      {asynchronous:true, evalScripts:true})}, 10)
-      #  periodically_call_remote(:url => { :action => 'get_averages' }, :update => 'avg')
-      #
-      #  # Call invoice every 10 seconds with the id of the customer
-      #  # If it succeeds, update the invoice DIV; if it fails, update the error DIV
-      #  # Generates:
-      #  #      new PeriodicalExecuter(function() {new Ajax.Updater({success:'invoice',failure:'error'}, 
-      #  #      '/testing/invoice/16', {asynchronous:true, evalScripts:true})}, 10)
-      #  periodically_call_remote(:url => { :action => 'invoice', :id => customer.id },
-      #     :update => { :success => "invoice", :failure => "error" }
-      #
-      #  # Call update every 20 seconds and update the new_block DIV
-      #  # Generates:
-      #  # new PeriodicalExecuter(function() {new Ajax.Updater('news_block', 'update', {asynchronous:true, evalScripts:true})}, 20)
-      #  periodically_call_remote(:url => 'update', :frequency => '20', :update => 'news_block')
-      #
       def periodically_call_remote(options = {})
          frequency = options[:frequency] || 10 # every ten seconds by default
          code = "new PeriodicalExecuter(function() {#{remote_function(options)}}, #{frequency})"
@@ -298,9 +156,6 @@ module ActionView
       # specified with the :action/:method options on :html.
       #
       # Example:
-      #   # Generates:
-      #   #      <form action="/some/place" method="post" onsubmit="new Ajax.Request('', 
-      #   #      {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); return false;">
       #   form_remote_tag :html => { :action => 
       #     url_for(:controller => "some", :action => "place") }
       #
@@ -311,11 +166,6 @@ module ActionView
       # the :url (and the default method is :post).
       #
       # form_remote_tag also takes a block, like form_tag:
-      #   # Generates:
-      #   #     <form action="/" method="post" onsubmit="new Ajax.Request('/', 
-      #   #     {asynchronous:true, evalScripts:true, parameters:Form.serialize(this)}); 
-      #   #     return false;"> <div><input name="commit" type="submit" value="Save" /></div>
-      #   #     </form>
       #   <% form_remote_tag :url => '/posts' do -%>
       #     <div><%= submit_tag 'Save' %></div>
       #   <% end -%>
@@ -330,85 +180,18 @@ module ActionView
         form_tag(options[:html].delete(:action) || url_for(options[:url]), options[:html], &block)
       end
 
-      # Creates a form that will submit using XMLHttpRequest in the background 
-      # instead of the regular reloading POST arrangement and a scope around a 
-      # specific resource that is used as a base for questioning about
-      # values for the fields.  
-      #
-      # === Resource 
-      #
-      # Example:
-      #   <% remote_form_for(@post) do |f| %>
-      #     ...
-      #   <% end %>
-      #
-      # This will expand to be the same as:
-      #
-      #   <% remote_form_for :post, @post, :url => post_path(@post), :html => { :method => :put, :class => "edit_post", :id => "edit_post_45" } do |f| %>
-      #     ...
-      #   <% end %>
-      #
-      # === Nested Resource 
-      #
-      # Example:
-      #   <% remote_form_for([@post, @comment]) do |f| %>
-      #     ...
-      #   <% end %>
-      #
-      # This will expand to be the same as:
-      #
-      #   <% remote_form_for :comment, @comment, :url => post_comment_path(@post, @comment), :html => { :method => :put, :class => "edit_comment", :id => "edit_comment_45" } do |f| %>
-      #     ...
-      #   <% end %>
-      #
-      # If you don't need to attach a form to a resource, then check out form_remote_tag.
-      #
-      # See FormHelper#form_for for additional semantics.
-      def remote_form_for(record_or_name_or_array, *args, &proc)
-        options = args.extract_options!
-
-        case record_or_name_or_array
-        when String, Symbol
-          object_name = record_or_name_or_array
-        when Array
-          object = record_or_name_or_array.last
-          object_name = ActionController::RecordIdentifier.singular_class_name(object)
-          apply_form_for_options!(record_or_name_or_array, options)
-          args.unshift object
-        else
-          object      = record_or_name_or_array
-          object_name = ActionController::RecordIdentifier.singular_class_name(record_or_name_or_array)
-          apply_form_for_options!(object, options)
-          args.unshift object
-        end
-
+      # Works like form_remote_tag, but uses form_for semantics.
+      def remote_form_for(object_name, *args, &proc)
+        options = args.last.is_a?(Hash) ? args.pop : {}
         concat(form_remote_tag(options), proc.binding)
         fields_for(object_name, *(args << options), &proc)
         concat('</form>', proc.binding)
       end
       alias_method :form_remote_for, :remote_form_for
       
-      # Returns a button input tag with the element name of +name+ and a value (i.e., display text) of +value+
-      # that will submit form using XMLHttpRequest in the background instead of a regular POST request that
-      # reloads the page. 
-      #
-      #  # Create a button that submits to the create action
-      #  # 
-      #  # Generates: <input name="create_btn" onclick="new Ajax.Request('/testing/create', 
-      #  #     {asynchronous:true, evalScripts:true, parameters:Form.serialize(this.form)}); 
-      #  #     return false;" type="button" value="Create" />
-      #  <%= submit_to_remote 'create_btn', 'Create', :url => { :action => 'create' } %>
-      #
-      #  # Submit to the remote action update and update the DIV succeed or fail based
-      #  # on the success or failure of the request
-      #  #
-      #  # Generates: <input name="update_btn" onclick="new Ajax.Updater({success:'succeed',failure:'fail'}, 
-      #  #      '/testing/update', {asynchronous:true, evalScripts:true, parameters:Form.serialize(this.form)}); 
-      #  #      return false;" type="button" value="Update" />
-      #  <%= submit_to_remote 'update_btn', 'Update', :url => { :action => 'update' },
-      #     :update => { :success => "succeed", :failure => "fail" }
-      #
-      # <tt>options</tt> argument is the same as in form_remote_tag.
+      # Returns a button input tag that will submit form using XMLHttpRequest 
+      # in the background instead of regular reloading POST arrangement. 
+      # <tt>options</tt> argument is the same as in <tt>form_remote_tag</tt>.
       def submit_to_remote(name, value, options = {})
         options[:with] ||= 'Form.serialize(this.form)'
 
@@ -421,7 +204,7 @@ module ActionView
         tag("input", options[:html], false)
       end
       
-      # Returns '<tt>eval(request.responseText)</tt>' which is the JavaScript function
+      # Returns 'eval(request.responseText)' which is the JavaScript function
       # that form_remote_tag can call in :complete to evaluate a multiple
       # update return document using update_element_function calls.
       def evaluate_remote_response
@@ -432,8 +215,6 @@ module ActionView
       # Takes the same arguments as link_to_remote.
       # 
       # Example:
-      #   # Generates: <select id="options" onchange="new Ajax.Updater('options', 
-      #   # '/testing/update_options', {asynchronous:true, evalScripts:true})">
       #   <select id="options" onchange="<%= remote_function(:update => "options", 
       #       :url => { :action => :update_options }) %>">
       #     <option value="0">Hello</option>
@@ -469,34 +250,14 @@ module ActionView
         return function
       end
 
-      # Observes the field with the DOM ID specified by +field_id+ and calls a
-      # callback when its contents have changed. The default callback is an
-      # Ajax call. By default the value of the observed field is sent as a
-      # parameter with the Ajax call.
+      # Observes the field with the DOM ID specified by +field_id+ and makes
+      # an Ajax call when its contents have changed.
       # 
-      # Example:
-      #  # Generates: new Form.Element.Observer('suggest', 0.25, function(element, value) {new Ajax.Updater('suggest', 
-      #  #         '/testing/find_suggestion', {asynchronous:true, evalScripts:true, parameters:'q=' + value})})
-      #  <%= observe_field :suggest, :url => { :action => :find_suggestion },
-      #       :frequency => 0.25,
-      #       :update => :suggest,
-      #       :with => 'q'
-      #       %>
-      #
       # Required +options+ are either of:
       # <tt>:url</tt>::       +url_for+-style options for the action to call
       #                       when the field has changed.
       # <tt>:function</tt>::  Instead of making a remote call to a URL, you
-      #                       can specify javascript code to be called instead.
-      #                       Note that the value of this option is used as the
-      #                       *body* of the javascript function, a function definition
-      #                       with parameters named element and value will be generated for you
-      #                       for example:
-      #                         observe_field("glass", :frequency => 1, :function => "alert('Element changed')")
-      #                       will generate:
-      #                         new Form.Element.Observer('glass', 1, function(element, value) {alert('Element changed')})
-      #                       The element parameter is the DOM element being observed, and the value is its value at the
-      #                       time the observer is triggered.
+      #                       can specify a function to be called instead.
       # 
       # Additional options are:
       # <tt>:frequency</tt>:: The frequency (in seconds) at which changes to
@@ -507,47 +268,22 @@ module ActionView
       # <tt>:update</tt>::    Specifies the DOM ID of the element whose 
       #                       innerHTML should be updated with the
       #                       XMLHttpRequest response text.
-      # <tt>:with</tt>::      A JavaScript expression specifying the parameters
-      #                       for the XMLHttpRequest. The default is to send the
-      #                       key and value of the observed field. Any custom
-      #                       expressions should return a valid URL query string.
-      #                       The value of the field is stored in the JavaScript
-      #                       variable +value+.
-      #
-      #                       Examples
-      #                       
-      #                         :with => "'my_custom_key=' + value"
-      #                         :with => "'person[name]=' + prompt('New name')"
-      #                         :with => "Form.Element.serialize('other-field')"
-      #
-      #                       Finally
-      #                         :with => 'name'
-      #                       is shorthand for
-      #                         :with => "'name=' + value"
-      #                       This essentially just changes the key of the parameter.
+      # <tt>:with</tt>::      A JavaScript expression specifying the
+      #                       parameters for the XMLHttpRequest. This defaults
+      #                       to 'value', which in the evaluated context 
+      #                       refers to the new field value. If you specify a
+      #                       string without a "=", it'll be extended to mean
+      #                       the form key that the value should be assigned to.
+      #                       So :with => "term" gives "'term'=value". If a "=" is
+      #                       present, no extension will happen.
       # <tt>:on</tt>::        Specifies which event handler to observe. By default,
       #                       it's set to "changed" for text fields and areas and
       #                       "click" for radio buttons and checkboxes. With this,
       #                       you can specify it instead to be "blur" or "focus" or
       #                       any other event.
       #
-      # Additionally, you may specify any of the options documented in the
-      # <em>Common options</em> section at the top of this document.
-      #
-      # Example:
-      #
-      #   # Sends params: {:title => 'Title of the book'} when the book_title input
-      #   # field is changed.
-      #   observe_field 'book_title',
-      #     :url => 'http://example.com/books/edit/1',
-      #     :with => 'title'
-      #    
-      #   # Sends params: {:book_title => 'Title of the book'} when the focus leaves
-      #   # the input field.
-      #   observe_field 'book_title',
-      #     :url => 'http://example.com/books/edit/1',
-      #     :on => 'blur'
-      #
+      # Additionally, you may specify any of the options documented in
+      # link_to_remote.
       def observe_field(field_id, options = {})
         if options[:frequency] && options[:frequency] > 0
           build_observer('Form.Element.Observer', field_id, options)
@@ -555,15 +291,11 @@ module ActionView
           build_observer('Form.Element.EventObserver', field_id, options)
         end
       end
-     
-      # Observes the form with the DOM ID specified by +form_id+ and calls a
-      # callback when its contents have changed. The default callback is an
-      # Ajax call. By default all fields of the observed field are sent as
-      # parameters with the Ajax call.
-      #
-      # The +options+ for +observe_form+ are the same as the options for
-      # +observe_field+. The JavaScript variable +value+ available to the
-      # <tt>:with</tt> option is set to the serialized form by default.
+      
+      # Like +observe_field+, but operates on an entire form identified by the
+      # DOM ID +form_id+. +options+ are the same as +observe_field+, except 
+      # the default value of the <tt>:with</tt> option evaluates to the
+      # serialized (request string) value of the form.
       def observe_form(form_id, options = {})
         if options[:frequency]
           build_observer('Form.Observer', form_id, options)
@@ -602,16 +334,17 @@ module ActionView
         #
         # Example:
         #
-        #   # Generates:
-        #   #     new Insertion.Bottom("list", "<li>Some item</li>");
-        #   #     new Effect.Highlight("list");
-        #   #     ["status-indicator", "cancel-link"].each(Element.hide);
         #   update_page do |page|
         #     page.insert_html :bottom, 'list', "<li>#{@item.name}</li>"
         #     page.visual_effect :highlight, 'list'
         #     page.hide 'status-indicator', 'cancel-link'
         #   end
         # 
+        # generates the following JavaScript:
+        #
+        #   new Insertion.Bottom("list", "<li>Some item</li>");
+        #   new Effect.Highlight("list");
+        #   ["status-indicator", "cancel-link"].each(Element.hide);
         #
         # Helper methods can be used in conjunction with JavaScriptGenerator.
         # When a helper method is called inside an update block on the +page+ 
@@ -651,19 +384,8 @@ module ActionView
           #   page['blank_slate']                  # => $('blank_slate');
           #   page['blank_slate'].show             # => $('blank_slate').show();
           #   page['blank_slate'].show('first').up # => $('blank_slate').show('first').up();
-          #
-          # You can also pass in a record, which will use ActionController::RecordIdentifier.dom_id to lookup
-          # the correct id:
-          #
-          #   page[@post]     # => $('post_45')
-          #   page[Post.new]  # => $('new_post')
           def [](id)
-            case id
-              when String, Symbol, NilClass
-                JavaScriptElementProxy.new(self, id)
-              else
-                JavaScriptElementProxy.new(self, ActionController::RecordIdentifier.dom_id(id))
-            end
+            JavaScriptElementProxy.new(self, id)
           end
           
           # Returns an object whose <tt>#to_json</tt> evaluates to +code+. Use this to pass a literal JavaScript 
@@ -681,19 +403,18 @@ module ActionView
           # 
           # You can also use prototype enumerations with the collection.  Observe:
           # 
-          #   # Generates: $$('#items li').each(function(value) { value.hide(); });
           #   page.select('#items li').each do |value|
           #     value.hide
           #   end 
+          #   # => $$('#items li').each(function(value) { value.hide(); });
           #
           # Though you can call the block param anything you want, they are always rendered in the 
           # javascript as 'value, index.'  Other enumerations, like collect() return the last statement:
-          #
-          #   # Generates: var hidden = $$('#items li').collect(function(value, index) { return value.hide(); }); 
+          # 
           #   page.select('#items li').collect('hidden') do |item|
           #     item.hide
           #   end
-          #
+          #   # => var hidden = $$('#items li').collect(function(value, index) { return value.hide(); });
           def select(pattern)
             JavaScriptElementCollectionProxy.new(self, pattern)
           end
@@ -707,7 +428,7 @@ module ActionView
           #                    element's existing content.
           # <tt>:bottom</tt>:: HTML is inserted inside the element, after the
           #                    element's existing content.
-          # <tt>:before</tt>:: HTML is inserted immediately preceding the element.
+          # <tt>:before</tt>:: HTML is inserted immediately preceeding the element.
           # <tt>:after</tt>::  HTML is inserted immediately following the element.
           #
           # +options_for_render+ may be either a string of HTML to insert, or a hash
@@ -715,12 +436,10 @@ module ActionView
           #
           #   # Insert the rendered 'navigation' partial just before the DOM
           #   # element with ID 'content'.
-          #   # Generates: new Insertion.Before("content", "-- Contents of 'navigation' partial --");
-          #   page.insert_html :before, 'content', :partial => 'navigation'
+          #   insert_html :before, 'content', :partial => 'navigation'
           #
           #   # Add a list item to the bottom of the <ul> with ID 'list'.
-          #   # Generates: new Insertion.Bottom("list", "<li>Last item</li>");
-          #   page.insert_html :bottom, 'list', '<li>Last item</li>'
+          #   insert_html :bottom, 'list', '<li>Last item</li>'
           #
           def insert_html(position, id, *options_for_render)
             insertion = position.to_s.camelize
@@ -734,8 +453,7 @@ module ActionView
           #
           #   # Replace the HTML of the DOM element having ID 'person-45' with the
           #   # 'person' partial for the appropriate object.
-          #   # Generates:  Element.update("person-45", "-- Contents of 'person' partial --");
-          #   page.replace_html 'person-45', :partial => 'person', :object => @person
+          #   replace_html 'person-45', :partial => 'person', :object => @person
           #
           def replace_html(id, *options_for_render)
             call 'Element.update', id, render(*options_for_render)
@@ -749,7 +467,7 @@ module ActionView
           #
           #   # Replace the DOM element having ID 'person-45' with the
           #   # 'person' partial for the appropriate object.
-          #   page.replace 'person-45', :partial => 'person', :object => @person
+          #   replace 'person-45', :partial => 'person', :object => @person
           #
           # This allows the same partial that is used for the +insert_html+ to
           # be also used for the input to +replace+ without resorting to
@@ -762,13 +480,9 @@ module ActionView
           #   </div>
           #
           #   # Insert a new person
-          #   # 
-          #   # Generates: new Insertion.Bottom({object: "Matz", partial: "person"}, "");
           #   page.insert_html :bottom, :partial => 'person', :object => @person
           #
           #   # Replace an existing person
-          #
-          #   # Generates: Element.replace("person_45", "-- Contents of partial --");
           #   page.replace 'person_45', :partial => 'person', :object => @person
           #
           def replace(id, *options_for_render)
@@ -776,75 +490,33 @@ module ActionView
           end
           
           # Removes the DOM elements with the given +ids+ from the page.
-          #
-          # Example:
-          #
-          #  # Remove a few people
-          #  # Generates: ["person_23", "person_9", "person_2"].each(Element.remove);
-          #  page.remove 'person_23', 'person_9', 'person_2'
-          #
           def remove(*ids)
             loop_on_multiple_args 'Element.remove', ids
           end
           
           # Shows hidden DOM elements with the given +ids+.
-          # 
-          # Example:
-          #
-          #  # Show a few people
-          #  # Generates: ["person_6", "person_13", "person_223"].each(Element.show);
-          #  page.show 'person_6', 'person_13', 'person_223'
-          #
           def show(*ids)
             loop_on_multiple_args 'Element.show', ids
           end
           
           # Hides the visible DOM elements with the given +ids+.
-          #
-          # Example:
-          #
-          #  # Hide a few people
-          #  # Generates: ["person_29", "person_9", "person_0"].each(Element.hide);
-          #  page.hide 'person_29', 'person_9', 'person_0'
-          #
           def hide(*ids)
             loop_on_multiple_args 'Element.hide', ids           
           end
           
           # Toggles the visibility of the DOM elements with the given +ids+.
-          # Example:
-          #
-          #  # Show a few people
-          #  # Generates: ["person_14", "person_12", "person_23"].each(Element.toggle);
-          #  page.toggle 'person_14', 'person_12', 'person_23'      # Hides the elements
-          #  page.toggle 'person_14', 'person_12', 'person_23'      # Shows the previously hidden elements
-          #
           def toggle(*ids)
             loop_on_multiple_args 'Element.toggle', ids            
           end
           
           # Displays an alert dialog with the given +message+.
-          #
-          # Example:
-          #
-          #   # Generates: alert('This message is from Rails!')
-          #   page.alert('This message is from Rails!')
           def alert(message)
             call 'alert', message
           end
           
-          # Redirects the browser to the given +location+ using JavaScript, in the same form as +url_for+.
-          #
-          # Examples:
-          #
-          #  # Generates: window.location.href = "/mycontroller";
-          #  page.redirect_to(:action => 'index')
-          # 
-          #  # Generates: window.location.href = "/account/signup";
-          #  page.redirect_to(:controller => 'account', :action => 'signup')
+          # Redirects the browser to the given +location+, in the same form as +url_for+.
           def redirect_to(location)
-            url = location.is_a?(String) ? location : @context.url_for(location)
-            record "window.location.href = #{url.inspect}"
+            assign 'window.location.href', @context.url_for(location)
           end
           
           # Calls the JavaScript +function+, optionally with the given +arguments+.
@@ -852,52 +524,22 @@ module ActionView
           # If a block is given, the block will be passed to a new JavaScriptGenerator;
           # the resulting JavaScript code will then be wrapped inside <tt>function() { ... }</tt> 
           # and passed as the called function's final argument.
-          # 
-          # Examples:
-          #
-          #  # Generates: Element.replace(my_element, "My content to replace with.")
-          #  page.call 'Element.replace', 'my_element', "My content to replace with."
-          #
-          #  # Generates: alert('My message!')
-          #  page.call 'alert', 'My message!'
-          #
           def call(function, *arguments, &block)
             record "#{function}(#{arguments_for_call(arguments, block)})"
           end
           
           # Assigns the JavaScript +variable+ the given +value+.
-          #
-          # Examples:
-          #
-          #  # Generates: my_string = "This is mine!";
-          #  page.assign 'my_string', 'This is mine!'
-          #
-          #  # Generates: record_count = 33;
-          #  page.assign 'record_count', 33
-          #
-          #  # Generates: tabulated_total = 47 
-          #  page.assign 'tabulated_total', @total_from_cart
-          #
           def assign(variable, value)
             record "#{variable} = #{javascript_object_for(value)}"
           end
           
           # Writes raw JavaScript to the page.
-          #
-          # Example:
-          #
-          #  page << "alert('JavaScript with Prototype.');"
           def <<(javascript)
             @lines << javascript
           end
           
           # Executes the content of the block after a delay of +seconds+. Example:
           #
-          #   # Generates: 
-          #   #     setTimeout(function() {
-          #   #     ;
-          #   #     new Effect.Fade("notice",{});
-          #   #     }, 20000);
           #   page.delay(20) do
           #     page.visual_effect :fade, 'notice'
           #   end
@@ -951,13 +593,9 @@ module ActionView
             end
           
             def render(*options_for_render)
-              old_format = @context && @context.template_format
-              @context.template_format = :html if @context
               Hash === options_for_render.first ? 
                 @context.render(*options_for_render) : 
                   options_for_render.first.to_s
-            ensure
-              @context.template_format = old_format if @context
             end
           
             def javascript_object_for(object)
@@ -983,12 +621,6 @@ module ActionView
       # Yields a JavaScriptGenerator and returns the generated JavaScript code.
       # Use this to update multiple elements on a page in an Ajax response.
       # See JavaScriptGenerator for more information.
-      #
-      # Example:
-      #
-      #   update_page do |page|
-      #     page.hide 'spinner'
-      #   end
       def update_page(&block)
         JavaScriptGenerator.new(@template, &block).to_s
       end
@@ -1019,15 +651,6 @@ module ActionView
         elsif options[:with]
           js_options['parameters'] = options[:with]
         end
-        
-        if protect_against_forgery? && !options[:form]
-          if js_options['parameters']
-            js_options['parameters'] << " + '&"
-          else
-            js_options['parameters'] = "'"
-          end
-          js_options['parameters'] << "#{request_forgery_protection_token}=' + encodeURIComponent('#{escape_javascript form_authenticity_token}')"
-        end
       
         options_for_javascript(js_options)
       end
@@ -1037,10 +660,10 @@ module ActionView
       end
     
       def build_observer(klass, name, options = {})
-        if options[:with] && (options[:with] !~ /[\{=(.]/)
+        if options[:with] && !options[:with].include?("=")
           options[:with] = "'#{options[:with]}=' + value"
         else
-          options[:with] ||= 'value' unless options[:function]
+          options[:with] ||= 'value' if options[:update]
         end
 
         callback = options[:function] || remote_function(options)
@@ -1066,8 +689,7 @@ module ActionView
     end
 
     # Converts chained method calls on DOM proxy elements into JavaScript chains 
-    class JavaScriptProxy < ActiveSupport::BasicObject #:nodoc:
-
+    class JavaScriptProxy < Builder::BlankSlate #:nodoc:
       def initialize(generator, root = nil)
         @generator = generator
         @generator << root if root
@@ -1149,7 +771,7 @@ module ActionView
         true
       end
 
-      def to_json(options = nil)
+      def to_json
         @variable
       end
       
@@ -1162,7 +784,7 @@ module ActionView
     end
 
     class JavaScriptCollectionProxy < JavaScriptProxy #:nodoc:
-      ENUMERABLE_METHODS_WITH_RETURN = [:all, :any, :collect, :map, :detect, :find, :find_all, :select, :max, :min, :partition, :reject, :sort_by, :in_groups_of, :each_slice] unless defined? ENUMERABLE_METHODS_WITH_RETURN
+      ENUMERABLE_METHODS_WITH_RETURN = [:all, :any, :collect, :map, :detect, :find, :find_all, :select, :max, :min, :partition, :reject, :sort_by] unless defined? ENUMERABLE_METHODS_WITH_RETURN
       ENUMERABLE_METHODS = ENUMERABLE_METHODS_WITH_RETURN + [:each] unless defined? ENUMERABLE_METHODS
       attr_reader :generator
       delegate :arguments_for_call, :to => :generator
@@ -1170,27 +792,11 @@ module ActionView
       def initialize(generator, pattern)
         super(generator, @pattern = pattern)
       end
-      
-      def each_slice(variable, number, &block)
-        if block
-          enumerate :eachSlice, :variable => variable, :method_args => [number], :yield_args => %w(value index), :return => true, &block
-        else
-          add_variable_assignment!(variable)
-          append_enumerable_function!("eachSlice(#{number.to_json});")
-        end
-      end
-      
+
       def grep(variable, pattern, &block)
         enumerate :grep, :variable => variable, :return => true, :method_args => [pattern], :yield_args => %w(value index), &block
       end
-      
-      def in_groups_of(variable, number, fill_with = nil)
-        arguments = [number]
-        arguments << fill_with unless fill_with.nil?
-        add_variable_assignment!(variable)
-        append_enumerable_function!("inGroupsOf(#{arguments_for_call arguments});")
-      end  
-      
+
       def inject(variable, memo, &block)
         enumerate :inject, :variable => variable, :method_args => [memo], :yield_args => %w(memo value index), :return => true, &block
       end
@@ -1205,7 +811,7 @@ module ActionView
         append_enumerable_function!("zip(#{arguments_for_call arguments}")
         if block
           function_chain[-1] += ", function(array) {"
-          yield ::ActiveSupport::JSON::Variable.new('array')
+          yield ActiveSupport::JSON::Variable.new('array')
           add_return_statement!
           @generator << '});'
         else
@@ -1238,7 +844,7 @@ module ActionView
           add_variable_assignment!(options[:variable]) if options[:variable]
           append_enumerable_function!("#{enumerable.to_s.camelize(:lower)}(#{method_args}function(#{yield_args}) {")
           # only yield as many params as were passed in the block
-          yield(*options[:yield_args].collect { |p| JavaScriptVariableProxy.new(@generator, p) }[0..block.arity-1])
+          yield *options[:yield_args].collect { |p| JavaScriptVariableProxy.new(@generator, p) }[0..block.arity-1]
           add_return_statement! if options[:return]
           @generator << '});'
         end
@@ -1267,4 +873,4 @@ module ActionView
   end
 end
 
-require 'action_view/helpers/javascript_helper'
+require File.dirname(__FILE__) + '/javascript_helper'

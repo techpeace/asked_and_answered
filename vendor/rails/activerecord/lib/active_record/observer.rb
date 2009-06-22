@@ -84,11 +84,10 @@ module ActiveRecord
   #
   # Observers will by default be mapped to the class with which they share a name. So CommentObserver will
   # be tied to observing Comment, ProductManagerObserver to ProductManager, and so on. If you want to name your observer
-  # differently than the class you're interested in observing, you can use the Observer.observe class method which takes
-  # either the concrete class (Product) or a symbol for that class (:product):
+  # differently than the class you're interested in observing, you can use the Observer.observe class method:
   #
   #   class AuditObserver < ActiveRecord::Observer
-  #     observe :account
+  #     observe Account
   #
   #     def after_update(account)
   #       AuditTrail.new(account, "UPDATED")
@@ -98,7 +97,7 @@ module ActiveRecord
   # If the audit observer needs to watch more than one kind of object, this can be specified with multiple arguments:
   #
   #   class AuditObserver < ActiveRecord::Observer
-  #     observe :account, :balance
+  #     observe Account, Balance
   #
   #     def after_update(record)
   #       AuditTrail.new(record, "UPDATED")
@@ -125,39 +124,23 @@ module ActiveRecord
   #
   # Observers will not be invoked unless you define these in your application configuration.
   #
-  # == Loading
-  #
-  # Observers register themselves in the model class they observe, since it is the class that
-  # notifies them of events when they occur. As a side-effect, when an observer is loaded its
-  # corresponding model class is loaded.
-  # 
-  # Up to (and including) Rails 2.0.2 observers were instantiated between plugins and
-  # application initializers. Now observers are loaded after application initializers, 
-  # so observed models can make use of extensions.
-  # 
-  # If by any chance you are using observed models in the initialization you can still
-  # load their observers by calling <tt>ModelObserver.instance</tt> before. Observers are
-  # singletons and that call instantiates and registers them.
-  #
   class Observer
     include Singleton
+
+    # Observer subclasses should be reloaded by the dispatcher in Rails
+    # when Dependencies.mechanism = :load.
+    include Reloadable::Deprecated
 
     class << self
       # Attaches the observer to the supplied model classes.
       def observe(*models)
-        models.flatten!
-        models.collect! { |model| model.is_a?(Symbol) ? model.to_s.camelize.constantize : model }
         define_method(:observed_classes) { Set.new(models) }
       end
 
       # The class observed by default is inferred from the observer's class name:
-      #   assert_equal Person, PersonObserver.observed_class
+      #   assert_equal [Person], PersonObserver.observed_class
       def observed_class
-        if observed_class_name = name[/(.*)Observer/, 1]
-          observed_class_name.constantize
-        else
-          nil
-        end
+        name.scan(/(.*)Observer/)[0][0].constantize
       end
     end
 
@@ -180,11 +163,11 @@ module ActiveRecord
 
     protected
       def observed_classes
-        Set.new([self.class.observed_class].compact.flatten)
+        Set.new([self.class.observed_class].flatten)
       end
 
       def observed_subclasses
-        observed_classes.sum([]) { |klass| klass.send(:subclasses) }
+        observed_classes.sum(&:subclasses)
       end
 
       def add_observer!(klass)

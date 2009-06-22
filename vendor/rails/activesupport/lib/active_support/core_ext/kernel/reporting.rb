@@ -42,14 +42,6 @@ module Kernel
     stream.reopen(old_stream)
   end
 
-  # Blocks and ignores any exception passed as argument if raised within the block.
-  #
-  #   suppress(ZeroDivisionError) do
-  #     1/0
-  #     puts "This code is NOT reached"
-  #   end
-  #
-  #   puts "This code gets executed and nothing related to ZeroDivisionError was seen"
   def suppress(*exception_classes)
     begin yield
     rescue Exception => e

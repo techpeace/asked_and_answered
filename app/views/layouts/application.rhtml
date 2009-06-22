@@ -1,0 +1,89 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+
+<meta name="Description" content="Information architecture, Web Design, Web Standards." />
+<meta name="Keywords" content="your, keywords" />
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<meta name="Distribution" content="Global" />
+<meta name="Robots" content="index,follow" />		
+
+<%= stylesheet_link_tag 'application.css' %>
+<%= javascript_include_tag :defaults, 'transparent_message' %>
+
+<title>Ask a Mars Question</title>
+	
+</head>
+
+<body id=<%= @body_id %>>
+
+	<!-- navigation starts here -->
+	<div id="nav">
+		<% expert_content do %>
+		  <ul>
+  			<li id="homeNav"><%= link_to "Home", "/" %></li>
+  			<li id="questionsNav"><%= link_to "Questions", questions_path %></li>
+  			<li id="aboutNav"><a href="index.html">Settings</a></li>
+  			<li id="loginNav"><%= link_to "Logout", "/logout" %></li>		
+  		</ul>
+  	<% end %>
+		
+		<% public_content do %>
+  		<ul>
+  			<li id="homeNav"><%= link_to "Home", "/" %></li>
+  			<li id="answersNav"><a href="index.html">Answers</a></li>
+  			<li id="aboutNav"><a href="index.html">About</a></li>
+  			<li id="loginNav"><%= link_to "Login", "/login" %></li>		
+  		</ul>
+		<% end %>
+		
+		<%= image_tag('logo.png', :id => 'logo') %>
+	
+	</div>
+
+	<!-- header starts here -->
+	<% if @show_header %>
+  	<div id="header">	
+	
+  		<div id="clouds"></div>
+		
+  		<h1 id="logo-text"><a href="index.html" title="">Ask a Mars Question</a></h1>	
+  		<p id="slogan">The answer may surprise you...</p>				
+	
+  	</div>	
+	<% end %>
+	
+	<!-- content-wrap starts here -->
+	<div id="content-wrap"><div id="content">	 
+	
+		<div id="sidebar" >	
+		
+		  <%= (body = yield :sidebar) ? body : render(:partial => 'shared/sidebar') %>
+		
+		</div>	
+	
+		<div id="main">		
+				
+		  <%= #(body = yield :body) ? body : render(:partial => 'shared/body')
+		      yield :body %>
+										
+		</div>					
+		
+	<!-- content-wrap ends here -->		
+	</div></div>
+	
+		<div id="footer-bottom">		
+			<p>
+			&copy; 2006 <strong>Ask a Mars Question</strong> | 
+			Developed by <a href="http://thatwebmuck.com">Matt Buck</a> | 
+			Based on a design by <a href="http://www.styleshout.com/">styleshout</a>
+			</p>		
+		</div>	
+	
+	<!-- footer ends-->		
+	</div>
+
+</body>
+</html>

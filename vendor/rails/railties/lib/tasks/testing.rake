@@ -13,11 +13,11 @@ def recent_tests(source_pattern, test_path, touched_since = 10.minutes.ago)
 
       # For modified files in app/ run the tests for it. ex. /test/functional/account_controller.rb
       test = "#{modified_test_path}/#{source_file}_test.rb"
-      tests.push test if File.exist?(test)
+      tests.push test if File.exists?(test)
 
       # For modified files in app, run tests in subdirs too. ex. /test/functional/account/*_test.rb
       test = "#{modified_test_path}/#{File.basename(path, '.rb').sub("_controller","")}"
-      FileList["#{test}/*_test.rb"].each { |f| tests.push f } if File.exist?(test)
+      FileList["#{test}/*_test.rb"].each { |f| tests.push f } if File.exists?(test)
 		
       return tests
 
@@ -38,17 +38,19 @@ module Kernel
   end
 end
 
-desc 'Run all unit, functional and integration tests'
+desc 'Test all units and functionals'
 task :test do
-  errors = %w(test:units test:functionals test:integration).collect do |task|
+  exceptions = ["test:units", "test:functionals", "test:integration"].collect do |task|
     begin
       Rake::Task[task].invoke
       nil
     rescue => e
-      task
+      e
     end
   end.compact
-  abort "Errors running #{errors.to_sentence}!" if errors.any?
+  
+  exceptions.each {|e| puts e;puts e.backtrace }
+  raise "Test failures" unless exceptions.empty?
 end
 
 namespace :test do
@@ -109,10 +111,10 @@ namespace :test do
     if ENV['PLUGIN']
       t.pattern = "vendor/plugins/#{ENV['PLUGIN']}/test/**/*_test.rb"
     else
-      t.pattern = 'vendor/plugins/*/**/test/**/*_test.rb'
+      t.pattern = 'vendor/plugins/**/test/**/*_test.rb'
     end
 
     t.verbose = true
   end
-  Rake::Task['test:plugins'].comment = "Run the plugin tests in vendor/plugins/*/**/test (or specify with PLUGIN=name)"
+  Rake::Task['test:plugins'].comment = "Run the plugin tests in vendor/plugins/**/test (or specify with PLUGIN=name)"
 end

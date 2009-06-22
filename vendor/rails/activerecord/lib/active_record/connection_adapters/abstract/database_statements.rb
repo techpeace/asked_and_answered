@@ -10,28 +10,21 @@ module ActiveRecord
       # Returns a record hash with the column names as keys and column values
       # as values.
       def select_one(sql, name = nil)
-        result = select_all(sql, name)
+        result = select(sql, name)
         result.first if result
       end
 
       # Returns a single value from a record
       def select_value(sql, name = nil)
-        if result = select_one(sql, name)
-          result.values.first
-        end
+        result = select_one(sql, name)
+        result.nil? ? nil : result.values.first
       end
 
       # Returns an array of the values of the first column in a select:
       #   select_values("SELECT id FROM companies LIMIT 3") => [1,2,3]
       def select_values(sql, name = nil)
-        result = select_rows(sql, name)
-        result.map { |v| v[0] }
-      end
-
-      # Returns an array of arrays containing the field values.
-      # Order is the same as that returned by #columns.
-      def select_rows(sql, name = nil)
-        raise NotImplementedError, "select_rows is an abstract method"
+        result = select_all(sql, name)
+        result.map{ |v| v.values.first }
       end
 
       # Executes the SQL statement in the context of this connection.
@@ -41,17 +34,17 @@ module ActiveRecord
 
       # Returns the last auto-generated ID from the affected table.
       def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-        insert_sql(sql, name, pk, id_value, sequence_name)
+        raise NotImplementedError, "insert is an abstract method"
       end
 
       # Executes the update statement and returns the number of rows affected.
       def update(sql, name = nil)
-        update_sql(sql, name)
+        execute(sql, name)
       end
 
       # Executes the delete statement and returns the number of rows affected.
       def delete(sql, name = nil)
-        delete_sql(sql, name)
+        update(sql, name)
       end
 
       # Wrap a block in a transaction.  Returns result of block.
@@ -60,7 +53,7 @@ module ActiveRecord
         begin
           if block_given?
             if start_db_transaction
-              begin_db_transaction
+              begin_db_transaction 
               transaction_open = true
             end
             yield
@@ -70,17 +63,10 @@ module ActiveRecord
             transaction_open = false
             rollback_db_transaction
           end
-          raise unless database_transaction_rollback.is_a? ActiveRecord::Rollback
+          raise
         end
       ensure
-        if transaction_open
-          begin
-            commit_db_transaction
-          rescue Exception => database_transaction_rollback
-            rollback_db_transaction
-            raise
-          end
-        end
+        commit_db_transaction if transaction_open
       end
 
       # Begins the transaction (and turns off auto-committing).
@@ -98,7 +84,7 @@ module ActiveRecord
         add_limit_offset!(sql, options) if options
       end
 
-      # Appends +LIMIT+ and +OFFSET+ options to an SQL statement.
+      # Appends +LIMIT+ and +OFFSET+ options to a SQL statement.
       # This method *modifies* the +sql+ parameter.
       # ===== Examples
       #  add_limit_offset!('SELECT * FROM suppliers', {:limit => 10, :offset => 50})
@@ -113,15 +99,14 @@ module ActiveRecord
         end
       end
 
-      # Appends a locking clause to an SQL statement.
-      # This method *modifies* the +sql+ parameter.
+      # Appends a locking clause to a SQL statement. *Modifies the +sql+ parameter*.
       #   # SELECT * FROM suppliers FOR UPDATE
       #   add_lock! 'SELECT * FROM suppliers', :lock => true
       #   add_lock! 'SELECT * FROM suppliers', :lock => ' FOR UPDATE'
       def add_lock!(sql, options)
         case lock = options[:lock]
-          when true;   sql << ' FOR UPDATE'
-          when String; sql << " #{lock}"
+          when true:   sql << ' FOR UPDATE'
+          when String: sql << " #{lock}"
         end
       end
 
@@ -134,37 +119,11 @@ module ActiveRecord
         # Do nothing by default.  Implement for PostgreSQL, Oracle, ...
       end
 
-      # Inserts the given fixture into the table. Overridden in adapters that require
-      # something beyond a simple insert (eg. Oracle).
-      def insert_fixture(fixture, table_name)
-        execute "INSERT INTO #{quote_table_name(table_name)} (#{fixture.key_list}) VALUES (#{fixture.value_list})", 'Fixture Insert'
-      end
-
-      def empty_insert_statement(table_name)
-        "INSERT INTO #{quote_table_name(table_name)} VALUES(DEFAULT)"
-      end
-
       protected
         # Returns an array of record hashes with the column names as keys and
         # column values as values.
         def select(sql, name = nil)
           raise NotImplementedError, "select is an abstract method"
-        end
-
-        # Returns the last auto-generated ID from the affected table.
-        def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil)
-          execute(sql, name)
-          id_value
-        end
-
-        # Executes the update statement and returns the number of rows affected.
-        def update_sql(sql, name = nil)
-          execute(sql, name)
-        end
-
-        # Executes the delete statement and returns the number of rows affected.
-        def delete_sql(sql, name = nil)
-          update_sql(sql, name)
         end
     end
   end

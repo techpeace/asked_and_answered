@@ -8,16 +8,16 @@ module ActiveRecord
   #
   #   ActiveRecord::Schema.define do
   #     create_table :authors do |t|
-  #       t.string :name, :null => false
+  #       t.column :name, :string, :null => false
   #     end
   #
   #     add_index :authors, :name, :unique
   #
   #     create_table :posts do |t|
-  #       t.integer :author_id, :null => false
-  #       t.string :subject
-  #       t.text :body
-  #       t.boolean :private, :default => false
+  #       t.column :author_id, :integer, :null => false
+  #       t.column :subject, :string
+  #       t.column :body, :text
+  #       t.column :private, :boolean, :default => false
   #     end
   #
   #     add_index :posts, :author_id
@@ -34,17 +34,24 @@ module ActiveRecord
     # #add_index, etc.).
     #
     # The +info+ hash is optional, and if given is used to define metadata
-    # about the current schema (currently, only the schema's version):
+    # about the current schema (like the schema's version):
     #
-    #   ActiveRecord::Schema.define(:version => 20380119000001) do
+    #   ActiveRecord::Schema.define(:version => 15) do
     #     ...
     #   end
     def self.define(info={}, &block)
       instance_eval(&block)
 
-      unless info[:version].blank?
-        initialize_schema_migrations_table
-        assume_migrated_upto_version info[:version]
+      unless info.empty?
+        initialize_schema_information
+        cols = columns('schema_info')
+
+        info = info.map do |k,v|
+          v = Base.connection.quote(v, cols.detect { |c| c.name == k.to_s })
+          "#{k} = #{v}"
+        end
+
+        Base.connection.update "UPDATE #{Migrator.schema_info_table_name} SET #{info.join(", ")}"
       end
     end
   end

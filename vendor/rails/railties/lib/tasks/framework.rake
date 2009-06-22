@@ -2,14 +2,13 @@ namespace :rails do
   namespace :freeze do
     desc "Lock this application to the current gems (by unpacking them into vendor/rails)"
     task :gems do
-      deps = %w(actionpack activerecord actionmailer activesupport activeresource)
+      deps = %w(actionpack activerecord actionmailer activesupport actionwebservice)
       require 'rubygems'
-      require 'rubygems/gem_runner'
       Gem.manage_gems
 
       rails = (version = ENV['VERSION']) ?
-        Gem.cache.find_name('rails', "= #{version}").first :
-        Gem.cache.find_name('rails').sort_by { |g| g.version }.last
+        Gem.cache.search('rails', "= #{version}").first :
+        Gem.cache.search('rails').sort_by { |g| g.version }.last
 
       version ||= rails.version
 
@@ -22,19 +21,14 @@ namespace :rails do
       rm_rf   "vendor/rails"
       mkdir_p "vendor/rails"
 
-      begin
-        chdir("vendor/rails") do
-          rails.dependencies.select { |g| deps.include? g.name }.each do |g|
-            Gem::GemRunner.new.run(["unpack", g.name, "--version", g.version_requirements.to_s])
-            mv(Dir.glob("#{g.name}*").first, g.name)
-          end
-
-          Gem::GemRunner.new.run(["unpack", "rails", "--version", "=#{version}"])
-          FileUtils.mv(Dir.glob("rails*").first, "railties")
+      chdir("vendor/rails") do
+        rails.dependencies.select { |g| deps.include? g.name }.each do |g|
+          Gem::GemRunner.new.run(["unpack", "-v", "#{g.version_requirements}", "#{g.name}"])
+          mv(Dir.glob("#{g.name}*").first, g.name)
         end
-      rescue Exception
-        rm_rf "vendor/rails"
-        raise
+
+        Gem::GemRunner.new.run(["unpack", "-v", "=#{version}", "rails"])
+        FileUtils.mv(Dir.glob("rails*").first, "railties")
       end
     end
 
@@ -65,13 +59,10 @@ namespace :rails do
 
         touch "vendor/rails/REVISION_#{ENV['REVISION']}"
       end
-
-      for framework in %w(railties actionpack activerecord actionmailer activesupport activeresource)
+      
+      for framework in %w( railties actionpack activerecord actionmailer activesupport actionwebservice )
         system "svn export #{rails_svn}/#{framework} vendor/rails/#{framework}" + (ENV['REVISION'] ? " -r #{ENV['REVISION']}" : "")
       end
-      
-      puts "Updating current scripts, javascripts, and configuration settings"
-      Rake::Task["rails:update"].invoke
     end
   end
 
@@ -108,7 +99,7 @@ namespace :rails do
       require 'railties_path'  
       project_dir = RAILS_ROOT + '/public/javascripts/'
       scripts = Dir[RAILTIES_PATH + '/html/javascripts/*.js']
-      scripts.reject!{|s| File.basename(s) == 'application.js'} if File.exist?(project_dir + 'application.js')
+      scripts.reject!{|s| File.basename(s) == 'application.js'} if File.exists?(project_dir + 'application.js')
       FileUtils.cp(scripts, project_dir)
     end
 

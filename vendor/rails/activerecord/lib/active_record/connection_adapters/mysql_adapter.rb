@@ -33,8 +33,7 @@ module MysqlCompat #:nodoc:
       end_eval
     end
 
-    unless target.instance_methods.include?('all_hashes') ||
-           target.instance_methods.include?(:all_hashes)
+    unless target.instance_methods.include?('all_hashes')
       raise "Failed to defined #{target.name}#all_hashes method. Mysql::VERSION = #{Mysql::VERSION.inspect}"
     end
   end
@@ -50,11 +49,6 @@ module ActiveRecord
         rescue LoadError => cannot_require_mysql
           # Use the bundled Ruby/MySQL driver if no driver is already in place
           begin
-            ActiveRecord::Base.logger.info(
-              "WARNING: You're using the Ruby-based MySQL library that ships with Rails. This library is not suited for production. " +
-              "Please install the C-based MySQL library instead (gem install mysql)."
-            ) if ActiveRecord::Base.logger
-
             require 'active_record/vendor/mysql'
           rescue LoadError
             raise cannot_require_mysql
@@ -91,18 +85,12 @@ module ActiveRecord
 
   module ConnectionAdapters
     class MysqlColumn < Column #:nodoc:
-      def extract_default(default)
-        if type == :binary || type == :text
-          if default.blank?
-            nil
-          else
-            raise ArgumentError, "#{type} columns cannot have a default value: #{default.inspect}"
-          end
-        elsif missing_default_forged_as_empty_string?(default)
-          nil
-        else
-          super
-        end
+      TYPES_ALLOWING_EMPTY_STRING_DEFAULT = Set.new([:binary, :string, :text])
+
+      def initialize(name, default, sql_type = nil, null = true)
+        @original_default = default
+        super
+        @default = nil if missing_default_forged_as_empty_string?
       end
 
       private
@@ -112,32 +100,15 @@ module ActiveRecord
           super
         end
 
-        def extract_limit(sql_type)
-          if sql_type =~ /blob|text/i
-            case sql_type
-            when /tiny/i
-              255
-            when /medium/i
-              16777215
-            when /long/i
-              2147483647 # mysql only allows 2^31-1, not 2^32-1, somewhat inconsistently with the tiny/medium/normal cases
-            else
-              super # we could return 65535 here, but we leave it undecorated by default
-            end
-          else
-            super
-          end
-        end
-
         # MySQL misreports NOT NULL column default when none is given.
         # We can't detect this for columns which may have a legitimate ''
-        # default (string) but we can for others (integer, datetime, boolean,
-        # and the rest).
+        # default (string, text, binary) but we can for others (integer,
+        # datetime, boolean, and the rest).
         #
         # Test whether the column has default '', is not null, and is not
         # a type allowing default ''.
-        def missing_default_forged_as_empty_string?(default)
-          type != :string && !null && default == ''
+        def missing_default_forged_as_empty_string?
+          !null && @original_default == '' && !TYPES_ALLOWING_EMPTY_STRING_DEFAULT.include?(type)
         end
     end
 
@@ -152,7 +123,6 @@ module ActiveRecord
     # * <tt>:username</tt> -- Defaults to root
     # * <tt>:password</tt> -- Defaults to nothing
     # * <tt>:database</tt> -- The name of the database. No default, must be provided.
-    # * <tt>:encoding</tt> -- (Optional) Sets the client encoding by executing "SET NAMES <encoding>" after connection
     # * <tt>:sslkey</tt> -- Necessary to use MySQL with an SSL connection
     # * <tt>:sslcert</tt> -- Necessary to use MySQL with an SSL connection
     # * <tt>:sslcapath</tt> -- Necessary to use MySQL with an SSL connection
@@ -172,14 +142,13 @@ module ActiveRecord
         "Server shutdown in progress",
         "Broken pipe",
         "Lost connection to MySQL server during query",
-        "MySQL server has gone away" ]
-
-      QUOTED_TRUE, QUOTED_FALSE = '1', '0'
+        "MySQL server has gone away"
+      ]
 
       def initialize(connection, logger, connection_options, config)
         super(connection, logger)
         @connection_options, @config = connection_options, config
-        @quoted_column_names, @quoted_table_names = {}, {}
+
         connect
       end
 
@@ -223,11 +192,7 @@ module ActiveRecord
       end
 
       def quote_column_name(name) #:nodoc:
-        @quoted_column_names[name] ||= "`#{name}`"
-      end
-
-      def quote_table_name(name) #:nodoc:
-        @quoted_table_names[name] ||= quote_column_name(name).gsub('.', '`.`')
+        "`#{name}`"
       end
 
       def quote_string(string) #:nodoc:
@@ -235,25 +200,13 @@ module ActiveRecord
       end
 
       def quoted_true
-        QUOTED_TRUE
+        "1"
       end
-
+      
       def quoted_false
-        QUOTED_FALSE
+        "0"
       end
 
-      # REFERENTIAL INTEGRITY ====================================
-
-      def disable_referential_integrity(&block) #:nodoc:
-        old = select_value("SELECT @@FOREIGN_KEY_CHECKS")
-
-        begin
-          update("SET FOREIGN_KEY_CHECKS = 0")
-          yield
-        ensure
-          update("SET FOREIGN_KEY_CHECKS = #{old}")
-        end
-      end
 
       # CONNECTION MANAGEMENT ====================================
 
@@ -278,22 +231,13 @@ module ActiveRecord
         disconnect!
         connect
       end
-
+      
       def disconnect!
         @connection.close rescue nil
       end
 
 
       # DATABASE STATEMENTS ======================================
-
-      def select_rows(sql, name = nil)
-        @connection.query_with_result = true
-        result = execute(sql, name)
-        rows = []
-        result.each { |row| rows << row }
-        result.free
-        rows
-      end
 
       def execute(sql, name = nil) #:nodoc:
         log(sql, name) { @connection.query(sql) }
@@ -305,13 +249,13 @@ module ActiveRecord
         end
       end
 
-      def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
-        super sql, name
+      def insert(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) #:nodoc:
+        execute(sql, name = nil)
         id_value || @connection.insert_id
       end
 
-      def update_sql(sql, name = nil) #:nodoc:
-        super
+      def update(sql, name = nil) #:nodoc:
+        execute(sql, name)
         @connection.affected_rows
       end
 
@@ -353,10 +297,10 @@ module ActiveRecord
         else
           sql = "SHOW TABLES"
         end
-
+        
         select_all(sql).inject("") do |structure, table|
           table.delete('Table_type')
-          structure += select_one("SHOW CREATE TABLE #{quote_table_name(table.to_a.first.last)}")["Create Table"] + ";\n\n"
+          structure += select_one("SHOW CREATE TABLE #{table.to_a.first.last}")["Create Table"] + ";\n\n"
         end
       end
 
@@ -365,37 +309,16 @@ module ActiveRecord
         create_database(name)
       end
 
-      # Create a new MySQL database with optional :charset and :collation.
-      # Charset defaults to utf8.
-      #
-      # Example:
-      #   create_database 'charset_test', :charset => 'latin1', :collation => 'latin1_bin'
-      #   create_database 'matt_development'
-      #   create_database 'matt_development', :charset => :big5
-      def create_database(name, options = {})
-        if options[:collation]
-          execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}` COLLATE `#{options[:collation]}`"
-        else
-          execute "CREATE DATABASE `#{name}` DEFAULT CHARACTER SET `#{options[:charset] || 'utf8'}`"
-        end
+      def create_database(name) #:nodoc:
+        execute "CREATE DATABASE `#{name}`"
       end
-
+      
       def drop_database(name) #:nodoc:
         execute "DROP DATABASE IF EXISTS `#{name}`"
       end
 
       def current_database
-        select_value 'SELECT DATABASE() as db'
-      end
-
-      # Returns the database character set.
-      def charset
-        show_variable 'character_set_database'
-      end
-
-      # Returns the database collation strategy.
-      def collation
-        show_variable 'collation_database'
+        select_one("SELECT DATABASE() as db")["db"]
       end
 
       def tables(name = nil) #:nodoc:
@@ -404,14 +327,10 @@ module ActiveRecord
         tables
       end
 
-      def drop_table(table_name, options = {})
-        super(table_name, options)
-      end
-
       def indexes(table_name, name = nil)#:nodoc:
         indexes = []
         current_index = nil
-        execute("SHOW KEYS FROM #{quote_table_name(table_name)}", name).each do |row|
+        execute("SHOW KEYS FROM #{table_name}", name).each do |row|
           if current_index != row[2]
             next if row[2] == "PRIMARY" # skip the primary key
             current_index = row[2]
@@ -424,60 +343,41 @@ module ActiveRecord
       end
 
       def columns(table_name, name = nil)#:nodoc:
-        sql = "SHOW FIELDS FROM #{quote_table_name(table_name)}"
+        sql = "SHOW FIELDS FROM #{table_name}"
         columns = []
         execute(sql, name).each { |field| columns << MysqlColumn.new(field[0], field[4], field[1], field[2] == "YES") }
         columns
       end
 
-      def create_table(table_name, options = {}) #:nodoc:
-        super(table_name, options.reverse_merge(:options => "ENGINE=InnoDB"))
+      def create_table(name, options = {}) #:nodoc:
+        super(name, {:options => "ENGINE=InnoDB"}.merge(options))
       end
-
-      def rename_table(table_name, new_name)
-        execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
-      end
+      
+      def rename_table(name, new_name)
+        execute "RENAME TABLE #{name} TO #{new_name}"
+      end  
 
       def change_column_default(table_name, column_name, default) #:nodoc:
-        current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
+        current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
 
-        execute("ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{current_type} DEFAULT #{quote(default)}")
+        execute("ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{current_type} DEFAULT #{quote(default)}")
       end
 
       def change_column(table_name, column_name, type, options = {}) #:nodoc:
         unless options_include_default?(options)
-          if column = columns(table_name).find { |c| c.name == column_name.to_s }
-            options[:default] = column.default
-          else
-            raise "No such column: #{table_name}.#{column_name}"
-          end
+          options[:default] = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Default"]
         end
 
-        change_column_sql = "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+        change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
         add_column_options!(change_column_sql, options)
         execute(change_column_sql)
       end
 
       def rename_column(table_name, column_name, new_column_name) #:nodoc:
-        current_type = select_one("SHOW COLUMNS FROM #{quote_table_name(table_name)} LIKE '#{column_name}'")["Type"]
-        execute "ALTER TABLE #{quote_table_name(table_name)} CHANGE #{quote_column_name(column_name)} #{quote_column_name(new_column_name)} #{current_type}"
+        current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
+        execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
       end
 
-
-      # SHOW VARIABLES LIKE 'name'
-      def show_variable(name)
-        variables = select_all("SHOW VARIABLES LIKE '#{name}'")
-        variables.first['Value'] unless variables.empty?
-      end
-
-      # Returns a table's primary key and belonging sequence.
-      def pk_and_sequence_for(table) #:nodoc:
-        keys = []
-        execute("describe #{quote_table_name(table)}").each_hash do |h|
-          keys << h["Field"]if h["Key"] == "PRI"
-        end
-        keys.length == 1 ? [keys.first, nil] : nil
-      end
 
       private
         def connect

@@ -1,4 +1,4 @@
-require 'abstract_unit'
+require File.dirname(__FILE__) + '/../abstract_unit'
 
 class VerificationTest < Test::Unit::TestCase
   class TestController < ActionController::Base
@@ -34,16 +34,7 @@ class VerificationTest < Test::Unit::TestCase
 
     verify :only => :must_be_post, :method => :post, :render => { :status => 405, :text => "Must be post" }, :add_headers => { "Allow" => "POST" }
 
-    verify :only => :guarded_one_for_named_route_test, :params => "one",
-           :redirect_to => :foo_url
-
-    verify :only => :no_default_action, :params => "santa"
-
     def guarded_one
-      render :text => "#{params[:one]}"
-    end
-    
-    def guarded_one_for_named_route_test
       render :text => "#{params[:one]}"
     end
 
@@ -91,10 +82,6 @@ class VerificationTest < Test::Unit::TestCase
       render :text => "Was a post!"
     end
     
-    def no_default_action
-      # Will never run
-    end
-    
     protected
       def rescue_action(e) raise end
 
@@ -107,14 +94,6 @@ class VerificationTest < Test::Unit::TestCase
     @controller = TestController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
-    ActionController::Routing::Routes.add_named_route :foo, '/foo', :controller => 'test', :action => 'foo'
-  end
-  
-  def test_no_deprecation_warning_for_named_route
-    assert_not_deprecated do
-      get :guarded_one_for_named_route_test, :two => "not one"
-      assert_redirected_to '/foo'
-    end
   end
 
   def test_guarded_one_with_prereqs
@@ -233,11 +212,6 @@ class VerificationTest < Test::Unit::TestCase
   def test_guarded_post_and_calls_render_succeeds
     post :must_be_post
     assert_equal "Was a post!", @response.body
-  end
-    
-  def test_default_failure_should_be_a_bad_request
-    post :no_default_action
-    assert_response :bad_request
   end
     
   def test_guarded_post_and_calls_render_fails_and_sets_allow_header

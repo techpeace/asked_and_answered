@@ -1,0 +1,21 @@
+# Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
+why_is_mars_red:
+  id: 1
+  question: Why is Mars red?
+  child_name: Jacob
+  child_email: 
+  child_age: 5
+  child_city: Austin
+  child_state: Texas
+  child_school: Westlake Presbyterian
+  accepted: false
+how_big_is_mars:
+  id: 2
+  question: Is Mars bigger than the Earth?
+  child_name: Caroline
+  child_email:
+  child_age: 3
+  child_city: Austin
+  child_state: Texas
+  child_school: Westlake Presbyterian
+  accepted: false

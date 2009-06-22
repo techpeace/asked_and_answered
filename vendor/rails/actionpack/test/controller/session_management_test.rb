@@ -1,15 +1,15 @@
-require 'abstract_unit'
+require File.dirname(__FILE__) + '/../abstract_unit'
 
 class SessionManagementTest < Test::Unit::TestCase
   class SessionOffController < ActionController::Base
     session :off
 
     def show
-      render :text => "done"
+      render_text "done"
     end
 
     def tell
-      render :text => "done"
+      render_text "done"
     end
   end
 
@@ -20,15 +20,15 @@ class SessionManagementTest < Test::Unit::TestCase
             :if => Proc.new { |r| r.parameters[:ws] }
 
     def show
-      render :text => "done"
+      render_text "done"
     end
 
     def tell
-      render :text => "done"
+      render_text "done"
     end
 
     def conditional
-      render :text => ">>>#{params[:ws]}<<<"
+      render_text ">>>#{params[:ws]}<<<"
     end
   end
 
@@ -36,11 +36,11 @@ class SessionManagementTest < Test::Unit::TestCase
     session :disabled => false, :only => :something
 
     def something
-      render :text => "done"
+      render_text "done"
     end
 
     def another
-      render :text => "done"
+      render_text "done"
     end
   end
 

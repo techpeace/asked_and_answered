@@ -1,0 +1,4 @@
+page.replace_html 'questions', :partial => 'shared/questions'
+page.replace_html 'question_form', :partial => 'new'
+page.delay(2) { page.visual_effect :highlight , "q" + @question.id.to_s , :duration => 3, :startcolor => "'#FF8B04'", :endcolor => "'#12120F'", :duration => 3 }
+rjs_transparent_flash_message(page)

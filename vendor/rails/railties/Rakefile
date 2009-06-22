@@ -21,14 +21,12 @@ RUBY_FORGE_PROJECT = "rails"
 RUBY_FORGE_USER    = "webster132"
 
 
-task :default => :test
-
 ## This is required until the regular test task
 ## below passes.  It's not ideal, but at least
 ## we can see the failures
 task :test do 
   Dir['test/**/*_test.rb'].all? do |file|
-    system("ruby -Itest #{file}")
+    system("ruby #{file}")
   end or raise "Failures"
 end
 
@@ -40,27 +38,9 @@ Rake::TestTask.new("regular_test") do |t|
 end
 
 
-BASE_DIRS = %w( 
-  app
-  config/environments
-  config/initializers
-  components
-  db
-  doc
-  log
-  lib
-  lib/tasks
-  public
-  script
-  script/performance
-  script/process
-  test
-  vendor
-  vendor/plugins
-  tmp/sessions
-  tmp/cache
-  tmp/sockets
-  tmp/pids
+BASE_DIRS   = %w( 
+  app config/environments components db doc log lib lib/tasks public script script/performance script/process test vendor vendor/plugins
+  tmp/sessions tmp/cache tmp/sockets tmp/pids
 )
 
 APP_DIRS    = %w( models controllers helpers views views/layouts )
@@ -68,12 +48,12 @@ PUBLIC_DIRS = %w( images javascripts stylesheets )
 TEST_DIRS   = %w( fixtures unit functional mocks mocks/development mocks/test )
 
 LOG_FILES    = %w( server.log development.log test.log production.log )
-HTML_FILES   = %w( 422.html 404.html 500.html index.html robots.txt favicon.ico images/rails.png
+HTML_FILES   = %w( 404.html 500.html index.html robots.txt favicon.ico images/rails.png
                    javascripts/prototype.js javascripts/application.js
                    javascripts/effects.js javascripts/dragdrop.js javascripts/controls.js )
-BIN_FILES    = %w( about console destroy generate performance/benchmarker performance/profiler process/reaper process/spawner process/inspector runner server plugin )
+BIN_FILES    = %w( about breakpointer console destroy generate performance/benchmarker performance/profiler process/reaper process/spawner process/inspector runner server plugin )
 
-VENDOR_LIBS = %w( actionpack activerecord actionmailer activesupport activeresource railties )
+VENDOR_LIBS = %w( actionpack activerecord actionmailer activesupport actionwebservice railties )
 
 
 desc "Generates a fresh Rails package with documentation"
@@ -160,6 +140,7 @@ end
 
 # Copy Ties Content -----------------------------------------------------------------------
 
+# :link_apache_config
 desc "Make copies of all the default content of ties"
 task :copy_ties_content => [ 
   :copy_rootfiles, :copy_dispatches, :copy_html_files, :copy_application,
@@ -196,14 +177,13 @@ task :copy_configs do
   
   cp "configs/routes.rb", "#{PKG_DESTINATION}/config/routes.rb"
 
-  cp "configs/initializers/inflections.rb", "#{PKG_DESTINATION}/config/initializers/inflections.rb"
-  cp "configs/initializers/mime_types.rb",  "#{PKG_DESTINATION}/config/initializers/mime_types.rb"
+  cp "configs/apache.conf", "#{PKG_DESTINATION}/public/.htaccess"
 
-  cp "environments/boot.rb",        "#{PKG_DESTINATION}/config/boot.rb"
+  cp "environments/boot.rb", "#{PKG_DESTINATION}/config/boot.rb"
   cp "environments/environment.rb", "#{PKG_DESTINATION}/config/environment.rb"
-  cp "environments/production.rb",  "#{PKG_DESTINATION}/config/environments/production.rb"
+  cp "environments/production.rb", "#{PKG_DESTINATION}/config/environments/production.rb"
   cp "environments/development.rb", "#{PKG_DESTINATION}/config/environments/development.rb"
-  cp "environments/test.rb",        "#{PKG_DESTINATION}/config/environments/test.rb"
+  cp "environments/test.rb", "#{PKG_DESTINATION}/config/environments/test.rb"
 end
 
 task :copy_binfiles do
@@ -226,6 +206,12 @@ end
 
 task :copy_app_doc_readme do
   cp "doc/README_FOR_APP", "#{PKG_DESTINATION}/doc/README_FOR_APP"
+end
+
+task :link_apache_config do
+  chdir(File.join(PKG_DESTINATION, 'config')) {
+    ln_s "../public/.htaccess", "apache.conf"
+  }
 end
 
 def copy_with_rewritten_ruby_path(src_file, dest_file)
@@ -251,19 +237,18 @@ desc "Generate documentation for the framework and for the empty application"
 task :generate_documentation => [ :generate_app_doc, :generate_rails_framework_doc ]
 
 task :generate_rails_framework_doc do
-  system %{cd #{PKG_DESTINATION}; rake doc:rails}
+  system %{cd #{PKG_DESTINATION}; rake apidoc}
 end
 
 task :generate_app_doc do
   File.cp "doc/README_FOR_APP", "#{PKG_DESTINATION}/doc/README_FOR_APP"
-  system %{cd #{PKG_DESTINATION}; rake doc:app}
+  system %{cd #{PKG_DESTINATION}; rake appdoc}
 end
 
 Rake::RDocTask.new { |rdoc|
   rdoc.rdoc_dir = 'doc'
   rdoc.title    = "Railties -- Gluing the Engine to the Rails"
   rdoc.options << '--line-numbers' << '--inline-source' << '--accessor' << 'cattr_accessor=object'
-  rdoc.options << '--charset' << 'utf-8'
   rdoc.template = "#{ENV['template']}.rb" if ENV['template']
   rdoc.rdoc_files.include('README', 'CHANGELOG')
   rdoc.rdoc_files.include('lib/*.rb')
@@ -294,7 +279,6 @@ PKG_FILES = FileList[
 ] - [ 'test' ]
 
 spec = Gem::Specification.new do |s|
-  s.platform = Gem::Platform::RUBY
   s.name = 'rails'
   s.version = PKG_VERSION
   s.summary = "Web-application framework with template engine, control-flow layer, and ORM."
@@ -304,17 +288,18 @@ spec = Gem::Specification.new do |s|
   EOF
 
   s.add_dependency('rake', '>= 0.7.2')
-  s.add_dependency('activesupport',    '= 2.0.2' + PKG_BUILD)
-  s.add_dependency('activerecord',     '= 2.0.2' + PKG_BUILD)
-  s.add_dependency('actionpack',       '= 2.0.2' + PKG_BUILD)
-  s.add_dependency('actionmailer',     '= 2.0.2' + PKG_BUILD)
-  s.add_dependency('activeresource',   '= 2.0.2' + PKG_BUILD)
+  s.add_dependency('activesupport',    '= 1.4.2' + PKG_BUILD)
+  s.add_dependency('activerecord',     '= 1.15.3' + PKG_BUILD)
+  s.add_dependency('actionpack',       '= 1.13.3' + PKG_BUILD)
+  s.add_dependency('actionmailer',     '= 1.3.3' + PKG_BUILD)
+  s.add_dependency('actionwebservice', '= 1.2.3' + PKG_BUILD)
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false
 
   s.files = PKG_FILES.to_a.delete_if {|f| f.include?('.svn')}
   s.require_path = 'lib'
+
   s.bindir = "bin"                               # Use these for applications.
   s.executables = ["rails"]
   s.default_executable = "rails"
@@ -341,7 +326,7 @@ desc "Publish the release files to RubyForge."
 task :release => [ :package ] do
   require 'rubyforge'
 
-  packages = %w( gem ).collect{ |ext| "pkg/#{PKG_NAME}-#{PKG_VERSION}.#{ext}" }
+  packages = %w( gem tgz zip ).collect{ |ext| "pkg/#{PKG_NAME}-#{PKG_VERSION}.#{ext}" }
 
   rubyforge = RubyForge.new
   rubyforge.login

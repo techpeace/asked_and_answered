@@ -1,0 +1,27 @@
+- @show_header = false
+
+- content_for :body do
+  
+  #login{:style => "height: 300px"}
+    - form_remote_tag |                      
+      :url      => {:action => 'authenticate', :controller => 'login'}, |
+      :loading  => transparent_message_show('ajax_info_message'), |
+      :complete => transparent_message_hide('ajax_info_message') do |
+      
+      .optional_field
+        %label Username:
+        = text_field_tag 'username'
+
+      .optional_field
+        %label Password:
+        = password_field_tag 'password'
+      
+      %br
+      = submit_tag "Login", :class => "button"
+      
+  = transparent_message_create("ajax_info_message", "Authenticating...<br/><br/>", "/images/large-loader.gif")
+      
+- content_for :sidebar do
+  %p= "Having trouble logging in?  Email #{mail_to "techpeace@gmail.com", "the administrator"} and we'll help you out."
+  
+      

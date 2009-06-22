@@ -1,0 +1,52 @@
+<h1>Editing question</h1>
+
+<%= error_messages_for :question %>
+
+<% form_for(:question, :url => question_path(@question), :html => { :method => :put }) do |f| %>
+  <p>
+    <b>Question</b><br />
+    <%= f.text_area :question %>
+  </p>
+
+  <p>
+    <b>Child name</b><br />
+    <%= f.text_field :child_name %>
+  </p>
+
+  <p>
+    <b>Child email</b><br />
+    <%= f.text_field :child_email %>
+  </p>
+
+  <p>
+    <b>Child age</b><br />
+    <%= f.text_field :child_age %>
+  </p>
+
+  <p>
+    <b>Child city</b><br />
+    <%= f.text_field :child_city %>
+  </p>
+
+  <p>
+    <b>Child state</b><br />
+    <%= f.text_field :child_state %>
+  </p>
+
+  <p>
+    <b>Child school</b><br />
+    <%= f.text_field :child_school %>
+  </p>
+
+  <p>
+    <b>Accepted</b><br />
+    <%= f.check_box :accepted %>
+  </p>
+
+  <p>
+    <%= submit_tag "Update" %>
+  </p>
+<% end %>
+
+<%= link_to 'Show', question_path(@question) %> |
+<%= link_to 'Back', questions_path %>

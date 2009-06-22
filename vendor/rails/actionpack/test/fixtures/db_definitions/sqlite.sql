@@ -9,8 +9,7 @@ CREATE TABLE 'replies' (
   'content' text, 
   'created_at' datetime, 
   'updated_at' datetime, 
-  'topic_id' integer,
-  'developer_id' integer
+  'topic_id' integer
 );
 
 CREATE TABLE 'topics' (

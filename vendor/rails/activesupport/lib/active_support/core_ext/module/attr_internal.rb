@@ -13,8 +13,7 @@ class Module
     end
   end
 
-  # Declare an attribute reader and writer backed by an internally-named instance
-  # variable.
+  # Declare attributes backed by 'internal' instance variables names.
   def attr_internal_accessor(*attrs)
     attr_internal_reader(*attrs)
     attr_internal_writer(*attrs)

@@ -23,18 +23,17 @@ module ActionController #:nodoc:
   # * <tt>domain</tt> - the domain for which this cookie applies.
   # * <tt>expires</tt> - the time at which this cookie expires, as a +Time+ object.
   # * <tt>secure</tt> - whether this cookie is a secure cookie or not (default to false).
-  #                     Secure cookies are only transmitted to HTTPS servers.
-  # * <tt>http_only</tt> - whether this cookie is accessible via scripting or only HTTP (defaults to false).
-  
+  #   Secure cookies are only transmitted to HTTPS servers.
   module Cookies
-    def self.included(base)
-      base.helper_method :cookies
-    end
-
     protected
       # Returns the cookie container, which operates as described above.
       def cookies
         CookieJar.new(self)
+      end
+
+      # Deprecated cookie writer method
+      def cookie(*options)
+        response.headers['cookie'] << CGI::Cookie.new(*options)
       end
   end
 
@@ -45,13 +44,10 @@ module ActionController #:nodoc:
       update(@cookies)
     end
 
-    # Returns the value of the cookie by +name+ -- or nil if no such cookie exists. You set new cookies using cookies[]=
-    # (for simple name/value cookies without options).
+    # Returns the value of the cookie by +name+ -- or nil if no such cookie exists. You set new cookies using either the cookie method
+    # or cookies[]= (for simple name/value cookies without options).
     def [](name)
-      cookie = @cookies[name.to_s]
-      if cookie && cookie.respond_to?(:value)
-        cookie.size > 1 ? cookie.value : cookie.value[0]
-      end
+      @cookies[name.to_s].value.first if @cookies[name.to_s] && @cookies[name.to_s].respond_to?(:value)
     end
 
     def []=(name, options)
@@ -66,11 +62,9 @@ module ActionController #:nodoc:
     end
 
     # Removes the cookie on the client machine by setting the value to an empty string
-    # and setting its expiration date into the past.  Like []=, you can pass in an options
-    # hash to delete cookies with extra data such as a +path+.
-    def delete(name, options = {})
-      options.stringify_keys!
-      set_cookie(options.merge("name" => name.to_s, "value" => "", "expires" => Time.at(0)))
+    # and setting its expiration date into the past
+    def delete(name)
+      set_cookie("name" => name.to_s, "value" => "", "expires" => Time.at(0))
     end
 
     private

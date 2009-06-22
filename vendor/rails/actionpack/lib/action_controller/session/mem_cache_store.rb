@@ -9,7 +9,7 @@
 
 begin
   require 'cgi/session'
-  require_library_or_gem 'memcache'
+  require 'memcache'
 
   class CGI
     class Session
@@ -57,22 +57,26 @@ begin
           @expires = options['expires'] || 0
           @session_key = "session:#{id}"
           @session_data = {}
-          # Add this key to the store if haven't done so yet
-          unless @cache.get(@session_key)
-            @cache.add(@session_key, @session_data, @expires)
-          end
         end
 
         # Restore session state from the session's memcache entry.
         #
         # Returns the session state as a hash.
         def restore
-          @session_data = @cache[@session_key] || {}
+          begin
+            @session_data = @cache[@session_key] || {}
+          rescue
+            @session_data = {}
+          end
         end
 
         # Save session state to the session's memcache entry.
         def update
-          @cache.set(@session_key, @session_data, @expires)
+          begin
+            @cache.set(@session_key, @session_data, @expires)
+          rescue
+            # Ignore session update failures.
+          end
         end
       
         # Update and close the session's memcache entry.
@@ -82,14 +86,17 @@ begin
 
         # Delete the session's memcache entry.
         def delete
-          @cache.delete(@session_key)
+          begin
+            @cache.delete(@session_key)
+          rescue
+            # Ignore session delete failures.
+          end
           @session_data = {}
         end
         
         def data
           @session_data
         end
-
       end
     end
   end

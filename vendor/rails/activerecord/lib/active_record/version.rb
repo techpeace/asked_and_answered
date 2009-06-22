@@ -1,8 +1,8 @@
 module ActiveRecord
   module VERSION #:nodoc:
-    MAJOR = 2
-    MINOR = 0
-    TINY  = 2
+    MAJOR = 1
+    MINOR = 15
+    TINY  = 3
 
     STRING = [MAJOR, MINOR, TINY].join('.')
   end

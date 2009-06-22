@@ -1,5 +1,4 @@
-require 'action_controller/assertions'
-require 'action_controller/test_case'
+require File.dirname(__FILE__) + '/assertions'
 
 module ActionController #:nodoc:
   class Base
@@ -24,7 +23,7 @@ module ActionController #:nodoc:
   class TestRequest < AbstractRequest #:nodoc:
     attr_accessor :cookies, :session_options
     attr_accessor :query_parameters, :request_parameters, :path, :session, :env
-    attr_accessor :host, :user_agent
+    attr_accessor :host
 
     def initialize(query_parameters = nil, request_parameters = nil, session = nil)
       @query_parameters   = query_parameters || {}
@@ -41,15 +40,18 @@ module ActionController #:nodoc:
       @session = TestSession.new
     end
 
-    # Wraps raw_post in a StringIO.
-    def body
-      StringIO.new(raw_post)
-    end
-
-    # Either the RAW_POST_DATA environment variable or the URL-encoded request
-    # parameters.
     def raw_post
-      env['RAW_POST_DATA'] ||= url_encoded_request_parameters
+      if raw_post = env['RAW_POST_DATA']
+        raw_post
+      else
+        params = self.request_parameters.dup
+        %w(controller action only_path).each do |k|
+          params.delete(k)
+          params.delete(k.to_sym)
+        end
+    
+        params.map { |k,v| [ CGI.escape(k.to_s), CGI.escape(v.to_s) ].join('=') }.sort.join('&')
+      end
     end
 
     def port=(number)
@@ -88,11 +90,11 @@ module ActionController #:nodoc:
     end
 
     def request_uri
-      @request_uri || super
+      @request_uri || super()
     end
 
     def path
-      @path || super
+      @path || super()
     end
 
     def assign_parameters(controller_path, action, parameters)
@@ -122,10 +124,6 @@ module ActionController #:nodoc:
       @request_method, @accepts, @content_type = nil, nil, nil
     end    
 
-    def referer
-      @env["HTTP_REFERER"]
-    end
-
     private
       def initialize_containers
         @env, @cookies = {}, {}
@@ -134,21 +132,9 @@ module ActionController #:nodoc:
       def initialize_default_values
         @host                    = "test.host"
         @request_uri             = "/"
-        @user_agent              = "Rails Testing"
         self.remote_addr         = "0.0.0.0"        
         @env["SERVER_PORT"]      = 80
         @env['REQUEST_METHOD']   = "GET"
-      end
-
-      def url_encoded_request_parameters
-        params = self.request_parameters.dup
-
-        %w(controller action only_path).each do |k|
-          params.delete(k)
-          params.delete(k.to_sym)
-        end
-
-        params.to_query
       end
   end
 
@@ -271,7 +257,13 @@ module ActionController #:nodoc:
       require 'stringio'
 
       sio = StringIO.new
-      body.call(self, sio)
+
+      begin 
+        $stdout = sio
+        body.call
+      ensure
+        $stdout = STDOUT
+      end
 
       sio.rewind
       sio.read
@@ -287,7 +279,7 @@ module ActionController #:nodoc:
 
     def initialize(attributes = nil)
       @session_id = ''
-      @attributes = attributes.nil? ? nil : attributes.stringify_keys
+      @attributes = attributes
       @saved_attributes = nil
     end
 
@@ -296,11 +288,11 @@ module ActionController #:nodoc:
     end
 
     def [](key)
-      data[key.to_s]
+      data[key]
     end
 
     def []=(key, value)
-      data[key.to_s] = value
+      data[key] = value
     end
 
     def update
@@ -325,37 +317,33 @@ module ActionController #:nodoc:
   #
   # Usage example, within a functional test:
   #   post :change_avatar, :avatar => ActionController::TestUploadedFile.new(Test::Unit::TestCase.fixture_path + '/files/spongebob.png', 'image/png')
-  # 
-  # Pass a true third parameter to ensure the uploaded file is opened in binary mode (only required for Windows):
-  #   post :change_avatar, :avatar => ActionController::TestUploadedFile.new(Test::Unit::TestCase.fixture_path + '/files/spongebob.png', 'image/png', :binary)
   require 'tempfile'
   class TestUploadedFile
     # The filename, *not* including the path, of the "uploaded" file
     attr_reader :original_filename
-
+    
     # The content type of the "uploaded" file
     attr_reader :content_type
-
-    def initialize(path, content_type = Mime::TEXT, binary = false)
+    
+    def initialize(path, content_type = 'text/plain')
       raise "#{path} file does not exist" unless File.exist?(path)
       @content_type = content_type
       @original_filename = path.sub(/^.*#{File::SEPARATOR}([^#{File::SEPARATOR}]+)$/) { $1 }
       @tempfile = Tempfile.new(@original_filename)
-      @tempfile.binmode if binary
       FileUtils.copy_file(path, @tempfile.path)
     end
-
+    
     def path #:nodoc:
       @tempfile.path
     end
-
+    
     alias local_path path
-
+    
     def method_missing(method_name, *args, &block) #:nodoc:
-      @tempfile.send!(method_name, *args, &block)
+      @tempfile.send(method_name, *args, &block)
     end
   end
-
+  
   module TestProcess
     def self.included(base)
       # execute the request simulating a specific http method and set/volley the response
@@ -374,7 +362,7 @@ module ActionController #:nodoc:
       # Sanity check for required instance variables so we can give an
       # understandable error message.
       %w(@controller @request @response).each do |iv_name|
-        if !(instance_variable_names.include?(iv_name) || instance_variable_names.include?(iv_name.to_sym)) || instance_variable_get(iv_name).nil?
+        if !instance_variables.include?(iv_name) || instance_variable_get(iv_name).nil?
           raise "#{iv_name} is nil: make sure you set it in your test's setup method."
         end
       end
@@ -397,7 +385,7 @@ module ActionController #:nodoc:
     def xml_http_request(request_method, action, parameters = nil, session = nil, flash = nil)
       @request.env['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest'
       @request.env['HTTP_ACCEPT'] = 'text/javascript, text/html, application/xml, text/xml, */*'
-      returning send!(request_method, action, parameters, session, flash) do
+      returning self.send(request_method, action, parameters, session, flash) do
         @request.env.delete 'HTTP_X_REQUESTED_WITH'
         @request.env.delete 'HTTP_ACCEPT'
       end
@@ -439,7 +427,7 @@ module ActionController #:nodoc:
 
     def build_request_uri(action, parameters)
       unless @request.env['REQUEST_URI']
-        options = @controller.send!(:rewrite_options, parameters)
+        options = @controller.send(:rewrite_options, parameters)
         options.update(:only_path => true, :action => action)
 
         url = ActionController::UrlRewriter.new(@request, parameters)
@@ -448,8 +436,7 @@ module ActionController #:nodoc:
     end
 
     def html_document
-      xml = @response.content_type =~ /xml$/
-      @html_document ||= HTML::Document.new(@response.body, false, xml)
+      @html_document ||= HTML::Document.new(@response.body)
     end
 
     def find_tag(conditions)
@@ -461,20 +448,16 @@ module ActionController #:nodoc:
     end
 
     def method_missing(selector, *args)
-      return @controller.send!(selector, *args) if ActionController::Routing::Routes.named_routes.helpers.include?(selector)
+      return @controller.send(selector, *args) if ActionController::Routing::Routes.named_routes.helpers.include?(selector)
       return super
     end
     
     # Shortcut for ActionController::TestUploadedFile.new(Test::Unit::TestCase.fixture_path + path, type). Example:
     #   post :change_avatar, :avatar => fixture_file_upload('/files/spongebob.png', 'image/png')
-    #
-    # To upload binary files on Windows, pass :binary as the last parameter. This will not affect other platforms.
-    #   post :change_avatar, :avatar => fixture_file_upload('/files/spongebob.png', 'image/png', :binary)
-    def fixture_file_upload(path, mime_type = nil, binary = false)
+    def fixture_file_upload(path, mime_type = nil)
       ActionController::TestUploadedFile.new(
         Test::Unit::TestCase.respond_to?(:fixture_path) ? Test::Unit::TestCase.fixture_path + path : path, 
-        mime_type,
-        binary
+        mime_type
       )
     end
 
@@ -497,15 +480,15 @@ module ActionController #:nodoc:
     #
     def with_routing
       real_routes = ActionController::Routing::Routes
-      ActionController::Routing.module_eval { remove_const :Routes }
+      ActionController::Routing.send :remove_const, :Routes
 
       temporary_routes = ActionController::Routing::RouteSet.new
-      ActionController::Routing.module_eval { const_set :Routes, temporary_routes }
-
+      ActionController::Routing.send :const_set, :Routes, temporary_routes
+  
       yield temporary_routes
     ensure
       if ActionController::Routing.const_defined? :Routes
-        ActionController::Routing.module_eval { remove_const :Routes }
+        ActionController::Routing.send(:remove_const, :Routes) 
       end
       ActionController::Routing.const_set(:Routes, real_routes) if real_routes
     end

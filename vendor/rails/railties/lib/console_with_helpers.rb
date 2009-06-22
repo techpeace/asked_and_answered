@@ -10,10 +10,8 @@ class Module
   end
 end
 
-def helper(*helper_names)
-  returning @helper_proxy ||= Object.new do |helper|
-    helper_names.each { |h| helper.extend "#{h}_helper".classify.constantize }
-  end
+def helper
+  @helper_proxy ||= Object.new 
 end
 
 require 'application'
@@ -23,4 +21,3 @@ class << helper
 end
 
 @controller = ApplicationController.new
-helper :application rescue nil

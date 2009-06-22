@@ -1,0 +1,32 @@
+- content_for :body do
+  %p
+    %strong The question:
+    = @question.question
+
+  %p
+    %em
+      Asked by:
+      = byline(@question)
+      
+      
+  = error_messages_for 'answer'
+
+  - form_for :answer, :url => {:action => "create", :controller => "answers", :quote_id => @quote} do |f|
+
+    = render :partial => 'form', :locals => { :f => f }
+
+    %br
+    = submit_tag "Answer question", :class => "button"
+
+  = transparent_flash_message
+      
+- content_for :sidebar do
+
+  %h3 Questions
+
+  %ul.sidemenu
+    %li.manage_questions= link_to "Manage questions", questions_path
+
+  = render :partial => 'shared/sidebar'
+  
+  

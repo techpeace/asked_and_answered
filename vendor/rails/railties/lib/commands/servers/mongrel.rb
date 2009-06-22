@@ -12,15 +12,13 @@ OPTIONS = {
   :port        => 3000,
   :ip          => "0.0.0.0",
   :environment => (ENV['RAILS_ENV'] || "development").dup,
-  :detach      => false,
-  :debugger    => false
+  :detach      => false
 }
 
 ARGV.clone.options do |opts|
   opts.on("-p", "--port=port", Integer, "Runs Rails on the specified port.", "Default: 3000") { |v| OPTIONS[:port] = v }
   opts.on("-b", "--binding=ip", String, "Binds Rails to the specified ip.", "Default: 0.0.0.0") { |v| OPTIONS[:ip] = v }
   opts.on("-d", "--daemon", "Make server run as a Daemon.") { OPTIONS[:detach] = true }
-  opts.on("-u", "--debugger", "Enable ruby-debugging for the server.") { OPTIONS[:debugger] = true }
   opts.on("-e", "--environment=name", String,
           "Specifies the environment to run this server under (test/development/production).",
           "Default: development") { |v| OPTIONS[:environment] = v }
@@ -47,8 +45,6 @@ if OPTIONS[:detach]
 else
   ENV["RAILS_ENV"] = OPTIONS[:environment]
   RAILS_ENV.replace(OPTIONS[:environment]) if defined?(RAILS_ENV)
-
-  start_debugger if OPTIONS[:debugger]
 
   require 'initializer'
   Rails::Initializer.run(:initialize_logger)

@@ -1,0 +1,21 @@
+- content_for :body do
+  = error_messages_for 'user'
+  
+  - form_for :user, :url => users_path do |f|
+    
+    = render :partial => 'form', :locals => { :f => f }
+    
+    .required_field
+      %label Password:
+      = f.password_field :password, :size => 10
+
+    .required_field
+      %label Password (again):
+      = f.password_field :password_confirmation, :size => 10
+    
+    %br
+    = submit_tag "Create user", :class => "button"
+    
+  = transparent_flash_message
+
+  %p The new user will be contacted via email with instructions on how to activate their new Expert account.  Login is not permitted until the account has been activated.

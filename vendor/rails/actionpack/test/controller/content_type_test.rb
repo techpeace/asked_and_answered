@@ -1,4 +1,4 @@
-require 'abstract_unit'
+require File.dirname(__FILE__) + '/../abstract_unit'
 
 class ContentTypeController < ActionController::Base
   def render_content_type_from_body
@@ -45,7 +45,7 @@ class ContentTypeController < ActionController::Base
   def rescue_action(e) raise end
 end
 
-ContentTypeController.view_paths = [ File.dirname(__FILE__) + "/../fixtures/" ]
+ContentTypeController.template_root = File.dirname(__FILE__) + "/../fixtures/"
 
 class ContentTypeTest < Test::Unit::TestCase
   def setup

@@ -1,6 +1,3 @@
 require 'bigdecimal'
-require 'active_support/core_ext/bigdecimal/conversions'
 
-class BigDecimal#:nodoc:
-  include ActiveSupport::CoreExtensions::BigDecimal::Conversions
-end
+require File.dirname(__FILE__) + '/bigdecimal/formatting.rb'

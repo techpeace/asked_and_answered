@@ -1,0 +1,15 @@
+.optional_field
+  %label Full name:
+  = f.text_field 'full_name'
+
+.required_field
+  %label Username:
+  = f.text_field 'login', :size => 12
+  
+.required_field
+  %label Email address:
+  = f.text_field 'email'
+  
+.optional_field
+  %label Bio:
+  = f.text_area 'bio'

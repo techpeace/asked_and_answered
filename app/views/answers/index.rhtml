@@ -1,0 +1,24 @@
+<h1>Listing answers</h1>
+
+<table>
+  <tr>
+    <th>Question</th>
+    <th>Expert</th>
+    <th>Answer</th>
+  </tr>
+  
+<% for answer in @answers %>
+  <tr>
+    <td><%=h answer.question_id %></td>
+    <td><%=h answer.expert_id %></td>
+    <td><%=h answer.answer %></td>
+    <td><%= link_to 'Show', answer_path(answer) %></td>
+    <td><%= link_to 'Edit', edit_answer_path(answer) %></td>
+    <td><%= link_to 'Destroy', answer_path(answer), :confirm => 'Are you sure?', :method => :delete %></td>
+  </tr>
+<% end %>
+</table>
+
+<br />
+
+<%= link_to 'New answer', new_answer_path %>
