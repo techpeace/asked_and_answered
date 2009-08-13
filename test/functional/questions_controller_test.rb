@@ -5,13 +5,13 @@ require 'questions_controller'
 class QuestionsController; def rescue_action(e) raise e end; end
 
 class QuestionsControllerTest < Test::Unit::TestCase
-  fixtures :questions, :experts
+  fixtures :questions, :users
 
   def setup
     @controller = QuestionsController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
-    @request.session[:expert] = experts(:hal).id
+    @request.session[:user] = users(:quentin).id
   end
 
   def test_should_get_index

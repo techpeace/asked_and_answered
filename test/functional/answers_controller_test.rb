@@ -5,13 +5,13 @@ require 'answers_controller'
 class AnswersController; def rescue_action(e) raise e end; end
 
 class AnswersControllerTest < Test::Unit::TestCase
-  fixtures :answers, :questions, :experts
+  fixtures :answers, :questions, :users
 
   def setup
     @controller = AnswersController.new
     @request    = ActionController::TestRequest.new
     @response   = ActionController::TestResponse.new
-    @request.session[:expert] = experts(:hal).id
+    @request.session[:user] = users(:quentin).id
   end
 
   def test_should_get_new
