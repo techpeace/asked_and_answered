@@ -2,5 +2,5 @@
 why_mars_is_red:
   id: 1
   question_id: 1
-  expert_id: 1
+  user_id: 1
   answer: Martians use red food dye extensively
