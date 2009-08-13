@@ -1,6 +1,6 @@
 class Answer < ActiveRecord::Base
   belongs_to :question
-  belongs_to :expert
+  belongs_to :user
 
-  validates_presence_of :question, :expert, :answer
+  validates_presence_of :question, :user, :answer
 end

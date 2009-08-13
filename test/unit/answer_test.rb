@@ -9,10 +9,10 @@ class AnswerTest < Test::Unit::TestCase
     assert_equal "can't be blank", answer.errors[:question]
   end
 
-  def test_validates_presence_of_expert
+  def test_validates_presence_of_user
     answer = Answer.new
     assert !answer.valid?
-    assert_equal "can't be blank", answer.errors[:expert]
+    assert_equal "can't be blank", answer.errors[:user]
   end
 
   def test_validates_presence_of_answer

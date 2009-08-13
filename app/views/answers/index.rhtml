@@ -10,7 +10,7 @@
 <% for answer in @answers %>
   <tr>
     <td><%=h answer.question_id %></td>
-    <td><%=h answer.expert_id %></td>
+    <td><%=h answer.user_id %></td>
     <td><%=h answer.answer %></td>
     <td><%= link_to 'Show', answer_path(answer) %></td>
     <td><%= link_to 'Edit', edit_answer_path(answer) %></td>
