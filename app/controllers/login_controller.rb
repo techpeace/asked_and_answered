@@ -9,7 +9,8 @@ class LoginController < ApplicationController
     
     if params[:password] = "m4rs4dm1n"
       session[:admin] = true
-    elsif 
+    # elsif 
+    end
       
   end
 end

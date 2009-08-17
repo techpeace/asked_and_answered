@@ -1,0 +1,5 @@
+tag v2.2.2
+git clone git://github.com/rails/rails.git 
+git checkout -b rel2.2.2 v2.2.2
+git checkout-index -a -f --prefix=/tmp/v2.2.2/
+MIT
