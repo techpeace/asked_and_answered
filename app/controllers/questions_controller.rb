@@ -44,8 +44,9 @@ class QuestionsController < ApplicationController
     if @question.save
       flash[:notice] = 'Thanks for asking!'
       flash.discard(:notice)
-      @questions = Question.find(:all, :limit => 7, :order => "created_at desc")
     end
+    # TODO: Errors not showing up on screen!!!
+    @questions = Question.find(:all, :limit => 7, :order => "created_at desc")
   end
 
   # PUT /questions/1
